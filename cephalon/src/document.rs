@@ -1,7 +1,7 @@
 use minidom::{
     Element,
     Node,
-    NSChoice
+    NSChoice, node
 };
 
 use hora::index::hnsw_idx::HNSWIndex;
@@ -38,6 +38,9 @@ use std::fs::{
     read_to_string,
     File
 };
+
+use std::collections::VecDeque;
+use std::sync::Arc;
 
 use crate::model::encode_text;
 use crate::vectordb::{
@@ -168,12 +171,12 @@ fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
             let sentence = &doc.data.as_ref().unwrap()[i];
             id+=1;
             match index.add(encoding,id){
-                Ok(msg)=>{
+                Ok(_msg)=>{
                     let params = (&doc_name, sentence, id.to_string());
                     match conn.execute("
                     INSERT INTO Vectors (DocumentName,Line,Label) VALUES (?1,?2,?3)
                     ", params.clone()){
-                        Ok(msg)=>{
+                        Ok(_msg)=>{
                         },
                         Err(err)=>{
                             println!("Error Inserting data into sqlite: {:?}",err);
@@ -187,13 +190,17 @@ fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
         }
     }
     match index.build(Metric::Euclidean){
-        Ok(msg)=>{
+        Ok(_msg)=>{
             match index.dump(&project_path.to_str().unwrap()){
-                Ok(dump_msg)=>{},
-                Err(dump_err)=>{}
+                Ok(_dump_msg)=>{},
+                Err(dump_err)=>{
+                    println!("{}",dump_err);
+                }
             }
         },
-        Err(err)=>{}
+        Err(err)=>{
+            println!("{}",err);
+        }
     }
 }
 }
@@ -252,6 +259,8 @@ pub fn get_file_list(path:&PathBuf) ->Result<Vec<Document>> {
     
 }
 
+
+
 /*
 Given a Document, this function will determine if the Document is supported or not via the is_supported function from
 the document, and if it is supported then call the appropriate text extraction function to extract text and return it as
@@ -305,7 +314,7 @@ pub fn get_text_from_txt(file_path:String)->Option<Vec<String>>{
 /*
 This function aims to get data from a word file purely in rust. The file_path is passed in as string, 
 and then from there using zip's ZipArchive the files within docx file are read. We get the document.xml file
-and then using minidom we extract the text data from the file, and return it as string.
+and then using minidom we extract the text data from the file using breadth first traversal, and return it as string.
 Use Case: This primarily for internal/rust_api because it can be used with rayon since this is limited by the GIL. 
 TODO: Split the function between the zip file read and parsing xml to get text. 
  */
@@ -333,31 +342,21 @@ pub fn get_text_from_docx(file_path:String)->Option<Vec<String>>{
 
     let outcome: std::result::Result<usize, std::io::Error> = document_xml_file.read_to_string(&mut xml_string);
     let element:Element = xml_string.parse().unwrap();
-    match element.nodes().next(){ //Get all the nodes of element. The next node should be the body node
-        Some(body_node)=> match body_node.as_element(){ //Get Body Node as an Element
-            Some(body_elem) => if body_elem.name() == "body"{//Confirm we got the body element
-                for node in body_elem.nodes(){ //If that worked, now take all the sub elements as nodes
-                    match node.as_element(){//Convert the nodes back to element
-                        Some(sdt_elem)=> match sdt_elem.get_child("sdtContent","http://schemas.openxmlformats.org/wordprocessingml/2006/main"){
-                            Some(sdt_content_elem)=>match sdt_content_elem.get_child("p","http://schemas.openxmlformats.org/wordprocessingml/2006/main"){
-                                Some(p_elem)=> match p_elem.get_child("r","http://schemas.openxmlformats.org/wordprocessingml/2006/main"){
-                                    Some(r_elem)=> match r_elem.get_child("t","http://schemas.openxmlformats.org/wordprocessingml/2006/main"){
-                                        Some(t_elem)=>result.push_str(&t_elem.text()),
-                                        None=>continue
-                                    },
-                                    None=>continue
-                                }
-                                None=>continue
-                            },
-                            None=>continue
-                        },
-                        None=>continue
-                    }
-                }
-            }
-            None=> return None
+    let mut node_que:VecDeque<&Element> = VecDeque::new();
+    let mut text_string:String = String::new();
+    node_que.push_back(&element);
+
+    while let Some(node) = node_que.pop_front(){//Breadth First Traversal of XML Tree
+        if node.name() == "t"{
+            result.push_str(&node.text());
+            result.push_str("\n");
         }
-        None=> return None
+        for child in node.children(){
+            node_que.push_back(child);
+        }
+    }
+    if result.len() == 0{//In case the string is empty
+        result.push_str("   ");
     }
     let result_vec: Vec<String> = split_text_into_chunks(result, 256).unwrap();
     Some(result_vec)

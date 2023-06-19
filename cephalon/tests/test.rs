@@ -5,7 +5,7 @@ use cephalon::document::{
     get_text_from_pdf,
     get_text_from_docx,
     get_text_from_txt,
-    get_file_list
+    get_file_list,
 };
 
 use cephalon::model::{
@@ -43,6 +43,12 @@ mod tests {
     fn split_text_into_chunks_test(){
         let result = split_text_into_chunks("Split this test please!!".to_string(), 5).unwrap();
         assert_eq!(result,vec!["Split"," this", " test"," plea","se!!"]);
+    }   
+
+    #[test]
+    fn split_text_into_chunks_test_2(){
+        let result = split_text_into_chunks("hello, world!".to_string(), 45).unwrap();
+        assert_eq!(result,vec!["hello, world!"]);
     }    
 
     #[test]
@@ -69,6 +75,15 @@ mod tests {
         project_path.push("test_resources");
         let doc_list = get_file_list(&project_path).unwrap();
         assert_eq!(doc_list[0].get_document_name_as_string().unwrap(),"pdf-sample.pdf".to_string())
+    }
+
+    #[test]
+    fn get_text_from_docx_test(){
+        let mut project_path:PathBuf = std::env::current_dir().unwrap();
+        project_path.push("tests");
+        project_path.push("test_resources");
+        project_path.push("word-docx-sample.docx");
+        get_text_from_docx(project_path.to_string_lossy().to_string());
     }
 
 }

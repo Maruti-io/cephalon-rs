@@ -29,14 +29,14 @@ pub fn create_index(path:PathBuf, dimension:usize)->HNSWIndex<f32,usize>{
         &HNSWParams::<f32>::default(),
     );
 
-    match index.dump(path.to_str().unwrap().as_ref()){
+    /*match index.dump(path.to_str().unwrap().as_ref()){
         Ok(msg)=>{
             println!("Created Index file");
         },
         Err(err)=>{
             println!("Error saving index file to storage: {:?}",err);
         }
-    }
+    }*/
 
     index
 }

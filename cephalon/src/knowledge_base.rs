@@ -2,6 +2,7 @@ use crate::model::encode_text;
 use hora::core::ann_index::ANNIndex;
 use rayon::prelude::*;
 use hora::index::hnsw_idx::HNSWIndex;
+use rusqlite::{Connection, Statement};
 
 use crate::document::{
     Document,
@@ -14,15 +15,21 @@ use crate::document::{
 use crate::vectordb::{
     create_sqlite_db,
     create_index,
-    load_index
+    load_index, load_sqlite_db
 };
 
 
-use std::any::Any;
 use std::fs::create_dir;
 use std::path::PathBuf;
 use std::io::ErrorKind;
-use std::cell::RefCell;
+use std::sync::Arc;
+
+
+#[derive(Debug)]
+pub struct Matches{
+    pub document_name:String,
+    pub line:String,
+}
 
 #[derive(Debug)]
 pub struct Cephalon{
@@ -72,22 +79,65 @@ impl Cephalon{
 
     }
 
-    pub fn search(self, path:PathBuf, query:String,count:usize)->Option<Vec<String>>{
+    pub fn search(self, path:PathBuf, query:String,count:usize)->Option<Vec<Matches>>{
+        let results:Vec<usize>;
+        let mut project_path = path.clone();
+        project_path.push(".cephalon");
         match encode_text(&vec![query]){ //Generate Embeddings for the query
             Some(encodings)=>{ 
-                let mut project_path = path.clone();
-                project_path.push(".cephalon");
-                let index = load_index(project_path, 384);
-                let results = index.search(&encodings[0], count);
-                for result in results{
-                    println!("Result: {:?}",result);
-                }
-                return None
+                
+                let index = load_index(project_path.clone(), 384);
+                results = index.search(&encodings[0], count);
             },
             None=>{
                 return None
             }
         }
+        let conn:Connection;
+        match load_sqlite_db(&project_path){
+            Some(sql_db)=>{
+                conn=sql_db;
+            },
+            None=>{
+                panic!("Error loading sql db to match searched.");
+            }
+        }
+        let text_result:Arc<str>;
+        let mut statement:Statement;
+        match conn.prepare("SELECT DocumentName, Label FROM Vectors WHERE Id = (?1)"){
+            Ok(stmt)=>{
+                statement = stmt;
+            },
+            Err(err)=>{
+                panic!("Error preparing SQL Statement for search results!: {:?}",err);
+            }
+        }
+        let mut stmt: Statement<'_> = conn.prepare("SELECT DocumentName, Line FROM  Vectors WHERE Id = (?1)").unwrap();
+
+        let mut search_results:Vec<Matches>=vec![];
+        
+        for result in results{
+            let match_iter = stmt.query_map(&[&result], |row| {
+                
+                Ok(Matches {
+                    document_name: row.get(0)?,
+                    line: row.get(1)?,
+                })
+            }).unwrap();
+
+            for m in match_iter{
+                match m{
+                    Ok(search_result)=>{
+                        search_results.push(search_result);
+                    },
+                    Err(err)=>{
+                        println!("Error getting search result: {:?}",err);
+                    }
+                }
+            }
+        }
+
+        Some(search_results)
 
     }
     
