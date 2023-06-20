@@ -52,13 +52,11 @@ impl Cephalon{
     }
     
     
-    /*
-    Description: This function will the current directory for all files, and store all the supported file_types as
-    a Vector of Documents doc_list. This is done by calling the get_file_list function. Then using doc_list extract all text from the supported file types and store the data
-    in the data attribute of Document Structure respectively.That is done by calling the get_text_from_all_docs function. 
-    Next it will split the text for each document into an array of string. Each string will be the size of tokens that could be accepted by 
-    an embedding model in sentence_transformer. 
-     */
+    ///Description: This function will the current directory for all files, and store all the supported file_types as
+    ///a Vector of Documents doc_list. This is done by calling the get_file_list function. Then using doc_list extract all text from the supported file types and store the data
+    ///in the data attribute of Document Structure respectively.That is done by calling the get_text_from_all_docs function. 
+    ///Next it will split the text for each document into an array of string. Each string will be the size of tokens that could be accepted by 
+    ///an embedding model in sentence_transformer. 
     pub fn search_and_build_index(self, path:&PathBuf){
         let mut project_path: PathBuf = path.clone();
         project_path.push(".cephalon");
@@ -79,6 +77,7 @@ impl Cephalon{
 
     }
 
+    ///Search Index for related queries, and covert it back to original text
     pub fn search(self, path:PathBuf, query:String,count:usize)->Option<Vec<Matches>>{
         let results:Vec<usize>;
         let mut project_path = path.clone();
@@ -86,7 +85,7 @@ impl Cephalon{
         match encode_text(&vec![query]){ //Generate Embeddings for the query
             Some(encodings)=>{ 
                 
-                let index = load_index(project_path.clone(), 384);
+                let index = load_index(project_path.clone());
                 results = index.search(&encodings[0], count);
             },
             None=>{
@@ -149,6 +148,7 @@ pub trait util{
 }
 
 impl util for Cephalon{
+    /// Create a new Cephalon struct
     fn new(path:PathBuf)->Cephalon{
         let mut project_path: PathBuf = path.clone();
         project_path.push(".cephalon");
@@ -179,6 +179,7 @@ impl util for Cephalon{
         Cephalon{path:path.to_path_buf(), documents:None}
     }
 
+    /// Load an existing Cephalon project and return it as a struct. 
     fn load(path:PathBuf)->Cephalon{
         Cephalon{path:path.to_path_buf(), documents:None}
     }

@@ -48,6 +48,8 @@ use crate::vectordb::{
     create_index,
     load_index
 };
+
+///Enum containing supported documents.
 pub enum DocType{
     Pdf,
     Docx,
@@ -55,6 +57,8 @@ pub enum DocType{
     Unsupported
 }
 
+
+///Document Struct meant to hold information about a document. 
 #[derive(Debug,Clone)]
 pub struct Document{
     name:String,
@@ -65,16 +69,19 @@ pub struct Document{
 }
 
 impl Document{
+
+    /// Returns true if the document is of supported type
     pub fn is_supported(&self)->bool{
         let splits: (&str, &str) = self.name.rsplit_once('.').unwrap();
         let supported_types:[&str;3] = ["pdf","docx","txt"];
         supported_types.contains(&splits.1)
     }
-
+    /// Returns the extension of a file/document as a string
     pub fn get_extension(&self)->Result<String>{
         Ok(self.name.rsplit_once(".").unwrap().1.to_string())
     }
-
+    
+    /// Get the document type of  a Document
     pub fn get_doc_type(&self,)->DocType{
         let extension: (&str, &str) = self.name.rsplit_once(".").unwrap();
         match extension.1{
@@ -85,18 +92,21 @@ impl Document{
         }
     }
 
+    ///
     pub fn get_document_path_as_string(&self)->Result<String>{
         Ok(self.path.clone().to_string_lossy().to_string())
     }
-
+    /// Returns a string containing document name
     pub fn get_document_name_as_string(&self)->Result<String>{
         Ok(self.name.clone())
     }
-
+    /// Set document data
     pub fn set_document_data(&mut self, data:Vec<String>){
         self.data = Some(data);
     }
-
+    /// Encode text of the current document via a sentence embedding model.
+    /// If the model was unable to encode the text into vector embeddings then 
+    /// none is returned. 
     pub fn encode_text_via_model(&self)->Option<Vec<Vec<f32>>>{
         let mut encodings:Vec<Vec<f32>> = vec![];
         let sentences:&Vec<String>;
@@ -122,10 +132,9 @@ pub trait document_uploads{
 }
 
 impl document_uploads for Document{
-    /*
-Description: This function encodes the text of documents in a doc_list using a Sentence Embedding Model. Then returns those embeddings
-encased in a vector. Make sure that the text in a document is split into chunks that the model can take as an input. 
-    */
+   
+///Description: This function encodes the text of documents in a doc_list using a Sentence Embedding Model. Then returns those embeddings
+///encased in a vector. Make sure that the text in a document is split into chunks that the model can take as an input. 
 fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
     
     let mut project_path = path.clone();
@@ -206,10 +215,9 @@ fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
 }
 
 
-/*
-This function return True if the file format is supported by this program. It takes in OsStr and converts that
-into a String type via lossy conversion. 
- */
+
+///This function return True if the file format is supported by this program. It takes in OsStr and converts that
+///into a String type via lossy conversion. 
 fn is_supported(file_name:&OsStr)->bool{
     let split_str:String = file_name.to_string_lossy().to_string();
     let splits = split_str.rsplit_once('.').unwrap();
@@ -217,10 +225,8 @@ fn is_supported(file_name:&OsStr)->bool{
     supported_types.contains(&splits.1)
 }
 
-/*
-Description: get_file_list() will get all the files in the current directory, create a Document object, and store it in a vector. 
-This function will then return that vector.
- */
+
+///Description: get_file_list() will get all the files in the current directory, create a Document object, and store it in a vector. This function will then return that vector.
 pub fn get_file_list(path:&PathBuf) ->Result<Vec<Document>> {
     let path_objects:ReadDir = read_dir(path).unwrap();
     let mut file_list:Vec<Document> = vec![];
@@ -261,65 +267,73 @@ pub fn get_file_list(path:&PathBuf) ->Result<Vec<Document>> {
 
 
 
-/*
-Given a Document, this function will determine if the Document is supported or not via the is_supported function from
-the document, and if it is supported then call the appropriate text extraction function to extract text and return it as
-an option. 
- */
+
+///Given a Document, this function will determine if the Document is supported or not via the is_supported function from
+///the document, and if it is supported then call the appropriate text extraction function to extract text and return it as
+///an option. 
 pub fn get_file_text( doc:&Document)->Option<Vec<String>>{
     let file_path:String; 
     match doc.get_document_path_as_string(){
         Ok(doc_path)=> file_path=doc_path,
         Err(_err)=>return None
     }
-    let file_text_option:Option<Vec<String>>;
+    let file_text_option:Option<String>;
     match doc.get_doc_type(){
         DocType::Pdf => file_text_option=get_text_from_pdf(file_path),
         DocType::Docx => file_text_option=get_text_from_docx(file_path),
         DocType::Txt => file_text_option=get_text_from_txt(file_path),
         DocType::Unsupported => return None
     }
-
+    let text_vec:Vec<String>;
     match file_text_option{
-        Some(file_text)=>Some(file_text),
-        None=>return None
+        Some(text)=>{
+            match split_text_into_chunks(text, 256){
+                Ok(string_vec)=>{
+                    text_vec=string_vec;
+                },
+                Err(err)=>{
+                    println!("Error splitting text into chunks!: {:?}",err);
+                    return None
+                }
+            }
+        },
+        None=>{
+            text_vec= vec![String::from("   ")];
+        }
     }
+    Some(text_vec)
 }
 
-
+/// Split a string of text into a vector of substring of length specified by chunk_size. 
+///  # Example
+///  ```
+///  let my_string:String = String::from("Split this string!");
+///  let split_string:Vec<String> = split_text_into_chunks(my_string, 5).unwrap();
+///  assert_eq!(split_string, vec!["Split", " this"," stri","ng!"])
+///  ```
 pub fn split_text_into_chunks(text:String, chunk_size:usize)->Result<Vec<String>>{
     let text_vector: Vec<String> = text.as_bytes().chunks(chunk_size).map(|chunk| String::from_utf8_lossy(chunk).to_string()).collect::<Vec<_>>();
     Ok(text_vector)
 }
 
-/*
-Description: This function reads text form a .txt file and returns it as an Option<String>. 
-Use Case: This primarily for internal/rust_api because it can be used with rayon since this is limited by the GIL. 
- */
-pub fn get_text_from_txt(file_path:String)->Option<Vec<String>>{
+
+///Description: This function reads text form a .txt file and returns it as an Option<String>. 
+pub fn get_text_from_txt(file_path:String)->Option<String>{
     let text_result = read_to_string(file_path);
     let text_string:String;
     match text_result{
         Ok(text)=>text_string=text,
         Err(_err)=>return None
     }
-    let text_vec_result = split_text_into_chunks(text_string, 256);
-    match text_vec_result{
-        Ok(text_vec)=>Some(text_vec),
-        Err(_err)=> return None
-    }
+    Some(text_string)
 }
 
 
-/*
-This function aims to get data from a word file purely in rust. The file_path is passed in as string, 
-and then from there using zip's ZipArchive the files within docx file are read. We get the document.xml file
-and then using minidom we extract the text data from the file using breadth first traversal, and return it as string.
-Use Case: This primarily for internal/rust_api because it can be used with rayon since this is limited by the GIL. 
-TODO: Split the function between the zip file read and parsing xml to get text. 
- */
 
-pub fn get_text_from_docx(file_path:String)->Option<Vec<String>>{
+///This function aims to get text data from a word file. The file_path is passed in as string, 
+///and then from there using zip's ZipArchive the files within docx file are read. We get the document.xml file
+///and then using minidom we extract the text data from the file using breadth first traversal, and return it as string 
+pub fn get_text_from_docx(file_path:String)->Option<String>{
     let mut result: String = String::new();
     let mut xml_string:String = String::new();
 
@@ -358,16 +372,12 @@ pub fn get_text_from_docx(file_path:String)->Option<Vec<String>>{
     if result.len() == 0{//In case the string is empty
         result.push_str("   ");
     }
-    let result_vec: Vec<String> = split_text_into_chunks(result, 256).unwrap();
-    Some(result_vec)
+    Some(result)
 }
 
-/*
-Description: This function extracts text from a pdf file file via the pdf_extract crate. It is written in rust, 
-and there for can be used with Rayon for parallel processing. 
-Use Case: This primarily for internal/rust_api because it can be used with rayon since this is limited by the GIL. 
- */
-pub fn get_text_from_pdf(file_path:String)->Option<Vec<String>>{
+
+///Description: This function extracts text from a pdf file file via the pdf_extract crate.  
+pub fn get_text_from_pdf(file_path:String)->Option<String>{
     let result_string:String;
     let bytes: Vec<u8>;
     match std::fs::read(file_path){
@@ -383,9 +393,5 @@ pub fn get_text_from_pdf(file_path:String)->Option<Vec<String>>{
         Err(_err)=> return None
     }
     
-    let result_string_vec = split_text_into_chunks(result_string, 256); 
-    match result_string_vec{
-        Ok(result_vec)=>Some(result_vec),
-        Err(_err)=>None
-    }
+    Some(result_string)
 }

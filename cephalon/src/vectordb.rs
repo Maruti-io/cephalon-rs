@@ -22,26 +22,18 @@ use crate::document::Document;
 
 
 
-
-pub fn create_index(path:PathBuf, dimension:usize)->HNSWIndex<f32,usize>{
+#[doc = "Create a HNSWIndex at location specified at path, with dimension dim"]
+pub fn create_index(path:PathBuf, dim:usize)->HNSWIndex<f32,usize>{
     let mut index = HNSWIndex::<f32, usize>::new(
-        dimension,
+        dim,
         &HNSWParams::<f32>::default(),
     );
-
-    /*match index.dump(path.to_str().unwrap().as_ref()){
-        Ok(msg)=>{
-            println!("Created Index file");
-        },
-        Err(err)=>{
-            println!("Error saving index file to storage: {:?}",err);
-        }
-    }*/
 
     index
 }
 
-pub fn load_index(path:PathBuf,dimension:usize)->HNSWIndex<f32,usize>{
+/// Load a HNSWIndex from the location specified path.
+pub fn load_index(path:PathBuf)->HNSWIndex<f32,usize>{
     let mut project_path:PathBuf = path.clone();
     project_path.push("cephalon.index");
     let mut index:HNSWIndex<f32,usize>;
@@ -57,9 +49,8 @@ pub fn load_index(path:PathBuf,dimension:usize)->HNSWIndex<f32,usize>{
     index
 }
 
-/*
-This function generates a new sqlite project at the specified project path.
- */
+
+///This function generates a new sqlite project at the specified project path.
 pub fn create_sqlite_db(path:PathBuf)->Connection{
     let mut project_path = path.clone();
     project_path.push("cephalon.db3");
@@ -91,9 +82,8 @@ pub fn create_sqlite_db(path:PathBuf)->Connection{
     conn
 }
 
-/*
-Description: This is function will create a connection to an existing sqlite database connection specified in the project path. 
- */
+
+///Description: This is function will create a connection to an existing sqlite database connection specified in the project path. 
 pub fn load_sqlite_db(path:&PathBuf)->Option<Connection>{
     let mut project_path = path.clone();
     project_path.push("cephalon.db3");
