@@ -42,7 +42,7 @@ impl Cephalon{
     fn get_text_from_all_docs(self, doc_list:&mut Vec<Document>){
         doc_list.par_iter_mut().for_each(|doc: &mut Document|{
             println!("Now Processing {:?} ...",doc.get_document_name_as_string());
-            let document_data_option: Option<Vec<String>> = get_file_text(doc);
+            let document_data_option: Option<Vec<String>> = get_file_text(doc,256);
             match document_data_option{
                 Some(doc_text)=> doc.set_document_data(doc_text),
                 None=>println!("Error reading document {:?}",doc.get_document_name_as_string())

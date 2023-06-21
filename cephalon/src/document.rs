@@ -269,9 +269,9 @@ pub fn get_file_list(path:&PathBuf) ->Result<Vec<Document>> {
 
 
 ///Given a Document, this function will determine if the Document is supported or not via the is_supported function from
-///the document, and if it is supported then call the appropriate text extraction function to extract text and return it as
-///an option. 
-pub fn get_file_text( doc:&Document)->Option<Vec<String>>{
+///the document, and if it is supported then call the appropriate text extraction function to extract text, then split the 
+///text into chunks based on the chunk_size parameter and return it as a vector of String. 
+pub fn get_file_text( doc:&Document, chunk_size:usize)->Option<Vec<String>>{
     let file_path:String; 
     match doc.get_document_path_as_string(){
         Ok(doc_path)=> file_path=doc_path,
@@ -287,7 +287,7 @@ pub fn get_file_text( doc:&Document)->Option<Vec<String>>{
     let text_vec:Vec<String>;
     match file_text_option{
         Some(text)=>{
-            match split_text_into_chunks(text, 256){
+            match split_text_into_chunks(text, chunk_size){
                 Ok(string_vec)=>{
                     text_vec=string_vec;
                 },
