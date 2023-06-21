@@ -1,6 +1,6 @@
 [package]
 name = "cephalon"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors=["Sagar <sagar.patel@maruti.io>"]
 rust-version="1.69"
