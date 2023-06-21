@@ -17,7 +17,7 @@ or
 ```
 cephalon create your-knowledge-base-assistant
 ```
-After that move all the documentation that you might have into your knowledge base folder and run 
+After that move all the documentation that you might have into your project directory and run 
 ```
 cephalon build
 ```
@@ -28,6 +28,61 @@ You can query the knowledge base by entering a query like this.
 cephalon answer 'your-query-or-text'
 ```
 ------
+# Using Cephalon in your code-base
+
+## Creating a new cephalon project
+```
+use cephalon::knowledge_base::{
+    Cephalon,
+    util
+};
+
+fn main(){
+    let current_dir_path:PathBuf = std::env::current_dir().unwrap();
+    let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
+}
+```
+This will create  a .cephalon directory in the project directory. All, the data related to cephalon will be kept in there. 
+
+## Scanning files and building Index and Database
+
+```
+use cephalon::knowledge_base::{
+    Cephalon,
+    util
+};
+fn main(){
+    let current_dir_path:PathBuf = std::env::current_dir().unwrap();
+    //Load and existing cephalon project
+    let cephalon_knowledge_base = Cephalon::load(current_dir_path.clone());
+    //Point to the directory where the files are located. 
+    cephalon_knowledge_base.search_and_build_index(&current_dir_path);
+}
+```
+This will scan all the files in the given directory. Then if the file type is supported by the program, it will extract text from them, split it into chunks of 256 characters, and save it in the cephalon data base. It will also create embeddings for those files via a Sentence-Embedding model and then upload them to an index and save the index in .cephalon directory. At, the moment the files need to be in the same directory as .cephalon directory. However, in future it will allow you to index any file or directory from any path. 
+
+## Searching for a specific text
+
+```
+use cephalon::knowledge_base::{
+    Cephalon,
+    util
+};
+fn main(){
+    let current_dir_path:PathBuf = std::env::current_dir().unwrap();
+    //Load a cephalon that is already built.
+    let cephalon_knowledge_base = Cephalon::load(current_dir_path.clone());
+
+    //Search the Index and database for results
+    let matches: Vec<Matches> = cephalon_knowledge_base.search(current_dir_path, query.query,5).unwrap();
+
+    //Iterate through matches and print them
+    for search_result in matches{
+        println!("{}, {:?}",search_result.document_name, search_result.line);
+    }
+}
+```
+
 ------
 # Cephalon under the hood
 
