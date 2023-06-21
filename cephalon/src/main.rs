@@ -23,6 +23,7 @@ struct CommandArgs{
 
 #[derive(Debug, Subcommand)]
 pub enum EntityType{
+    init(InitKnowledgeBaseCommand),
     create(CreateKnowledgeBaseCommand),
     build(BuildKnowledgeBaseCommand),
     answer(QueryKnowledgeBaseCommand),
@@ -33,9 +34,13 @@ pub struct CreateKnowledgeBaseCommand{
     pub project_name:String,
 }
 
-
 #[derive(Debug,Args)]
 pub struct BuildKnowledgeBaseCommand{
+    
+}
+
+#[derive(Debug,Args)]
+pub struct InitKnowledgeBaseCommand{
     
 }
 
@@ -48,9 +53,20 @@ pub struct QueryKnowledgeBaseCommand{
 
 fn main(){
     match CommandArgs::parse().entity_type{
-        EntityType::create(project_name)=>{
+        EntityType::init(_)=>{
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
-            let cephalon_knowledge_base = Cephalon::new(current_dir_path);
+            let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
+        },
+        EntityType::create(project_command)=>{
+            let mut current_dir_path:PathBuf = std::env::current_dir().unwrap();
+            current_dir_path.push(project_command.project_name);
+            match std::fs::create_dir(&current_dir_path){
+                Ok(_)=>{},
+                Err(err)=>{
+                    panic!("Error creating directory: {:?}",err)
+                }
+            }
+            let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
         },
         EntityType::build(_)=>{
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
