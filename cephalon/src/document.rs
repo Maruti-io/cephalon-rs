@@ -307,9 +307,9 @@ pub fn get_file_text( doc:&Document)->Option<Vec<String>>{
 /// Split a string of text into a vector of substring of length specified by chunk_size. 
 ///  # Example
 ///  ```
-///  let my_string:String = String::from("Split this string!");
-///  let split_string:Vec<String> = split_text_into_chunks(my_string, 5).unwrap();
-///  assert_eq!(split_string, vec!["Split", " this"," stri","ng!"])
+///let my_string:String = String::from("Split this string!");
+///let split_string:Vec<String> = cephalon::document::split_text_into_chunks(my_string, 5).unwrap();
+///assert_eq!(split_string, vec!["Split", " this"," stri","ng!"]);
 ///  ```
 pub fn split_text_into_chunks(text:String, chunk_size:usize)->Result<Vec<String>>{
     let text_vector: Vec<String> = text.as_bytes().chunks(chunk_size).map(|chunk| String::from_utf8_lossy(chunk).to_string()).collect::<Vec<_>>();

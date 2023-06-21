@@ -41,7 +41,7 @@ mod tests {
         let sentence = "This is a sentence that will be embedded!".to_string();
         let start_time = Instant::now();
         let model_name = "all-MiniLM-L6-v2".to_string();
-        let result = encode_text(&model_name, &sentence);
+        let result = encode_text(&vec![sentence]);
         println!("Time to generate embeddings: {:?}",start_time.elapsed());
     }
 
