@@ -143,9 +143,8 @@ fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
     let mut index = create_index(project_path.clone(),384);
 
     let mut id:usize = 0;
-    println!("doc_list_len: {:?}",doc_list.len());
     for doc in doc_list.iter(){
-        println!("{:?} encoding and uploading to index",doc.get_document_name_as_string());
+        println!("{:?} encoding and uploading to index",doc.get_document_name_as_string().unwrap());
         let encodings:Vec<Vec<f32>>;
 
 

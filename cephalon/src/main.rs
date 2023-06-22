@@ -23,10 +23,10 @@ struct CommandArgs{
 
 #[derive(Debug, Subcommand)]
 pub enum EntityType{
-    init(InitKnowledgeBaseCommand),
-    create(CreateKnowledgeBaseCommand),
-    build(BuildKnowledgeBaseCommand),
-    answer(QueryKnowledgeBaseCommand),
+    Init(InitKnowledgeBaseCommand),
+    Create(CreateKnowledgeBaseCommand),
+    Build(BuildKnowledgeBaseCommand),
+    Answer(QueryKnowledgeBaseCommand),
 }
 
 #[derive(Debug,Args)]
@@ -53,11 +53,11 @@ pub struct QueryKnowledgeBaseCommand{
 
 fn main(){
     match CommandArgs::parse().entity_type{
-        EntityType::init(_)=>{
+        EntityType::Init(_)=>{
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
             let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
         },
-        EntityType::create(project_command)=>{
+        EntityType::Create(project_command)=>{
             let mut current_dir_path:PathBuf = std::env::current_dir().unwrap();
             current_dir_path.push(project_command.project_name);
             match std::fs::create_dir(&current_dir_path){
@@ -68,12 +68,12 @@ fn main(){
             }
             let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
         },
-        EntityType::build(_)=>{
+        EntityType::Build(_)=>{
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
             let cephalon_knowledge_base = Cephalon::load(current_dir_path.clone());
             cephalon_knowledge_base.search_and_build_index(&current_dir_path);
         },
-        EntityType::answer(query)=>{
+        EntityType::Answer(query)=>{
             let now = Instant::now();
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
             let cephalon_knowledge_base = Cephalon::load(current_dir_path.clone());

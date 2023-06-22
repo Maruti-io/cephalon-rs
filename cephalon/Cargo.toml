@@ -31,3 +31,9 @@ rust-bert = "0.21.0"
 serde = "1.0.164"
 tch = {version="0.13.0",features=["download-libtorch"]}
 zip = "0.6.6"
+
+[features]
+doc-only = ["tch/doc-only"]
+
+[package.metadata.docs.rs]
+features = ["doc-only"]
