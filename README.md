@@ -10,6 +10,7 @@ Cephalon can provide:
 ------
 Join us on our Adventure
 Star us on [GitHub](https://github.com/Maruti-io/cephalon-rs)
+Join us on [Discord](https://discord.gg/zYQdB3x9)
 ------
 # Installing Cephalon
 
