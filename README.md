@@ -8,9 +8,14 @@ Cephalon can provide:
 * Support for masking private data ❔
 
 ------
-Join us on our Adventure
+# Join us on our Adventure
+
 Star us on [GitHub](https://github.com/Maruti-io/cephalon-rs)
+
 Join us on [Discord](https://discord.gg/zYQdB3x9)
+
+We would love to get some feedback from users on the project. We are working on developing a roadmap of the project as well. As such I would love to get some feed back from everyone, as to what features they would like to see in the project in the future. If there are features or issues you are facing please, let us know in the discord. We will do our best to respond to your questions as soon as possible! 
+
 ------
 # Installing Cephalon
 
