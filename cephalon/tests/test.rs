@@ -17,7 +17,7 @@ use cephalon::vectordb::{
 
 use cephalon::knowledge_base::{
     Cephalon,
-    util
+    Util
 };
 
 

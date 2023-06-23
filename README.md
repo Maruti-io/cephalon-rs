@@ -5,6 +5,20 @@ Cephalon can provide:
 * Semantic Search ✅
 * Multi-Modality [Schduled to start in late Fall 2023] ❔
     * Support for Images [Scheduled to start in late Fall 2023] ❔
+------
+# Installing Cephalon
+
+Step 1: Install cephalon via ```cargo add cephalon```. 
+
+Step 2: Install the libtorch library for enabling the use of pytorch models in rust. You can find the instructions to do so [here](https://github.com/LaurentMazare/tch-rs/blob/main/README.md)
+
+# Installing Cephalon CLI
+
+If you just want to play with the cli and test it without writing any code. You can install the CLI by
+
+Step 1: Install the libtorch library for enabling the use of pytorch models in rust. You can find the instructions to do so [here](https://github.com/LaurentMazare/tch-rs/blob/main/README.md)
+
+Step 2: Install the cephalon cli via: ```cargo install cephalon``` 
 
 ------
 # Creating a Knowledge Base Assistant 

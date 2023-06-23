@@ -6,7 +6,6 @@ use rusqlite::{Connection, Statement};
 
 use crate::document::{
     Document,
-    split_text_into_chunks,
     get_file_list,
     get_file_text,
     document_uploads
@@ -85,7 +84,7 @@ impl Cephalon{
         match encode_text(&vec![query]){ //Generate Embeddings for the query
             Some(encodings)=>{ 
                 
-                let index = load_index(project_path.clone());
+                let index: HNSWIndex<f32, usize> = load_index(project_path.clone());
                 results = index.search(&encodings[0], count);
             },
             None=>{
@@ -101,16 +100,7 @@ impl Cephalon{
                 panic!("Error loading sql db to match searched.");
             }
         }
-        let text_result:Arc<str>;
-        let mut statement:Statement;
-        match conn.prepare("SELECT DocumentName, Label FROM Vectors WHERE Id = (?1)"){
-            Ok(stmt)=>{
-                statement = stmt;
-            },
-            Err(err)=>{
-                panic!("Error preparing SQL Statement for search results!: {:?}",err);
-            }
-        }
+        
         let mut stmt: Statement<'_> = conn.prepare("SELECT DocumentName, Line FROM  Vectors WHERE Id = (?1)").unwrap();
 
         let mut search_results:Vec<Matches>=vec![];
@@ -142,12 +132,12 @@ impl Cephalon{
     
 }
 
-pub trait util{
+pub trait Util{
     fn new(path:PathBuf)->Self;
     fn load(path:PathBuf)->Self;
 }
 
-impl util for Cephalon{
+impl Util for Cephalon{
     /// Create a new Cephalon struct
     fn new(path:PathBuf)->Cephalon{
         let mut project_path: PathBuf = path.clone();
@@ -167,12 +157,12 @@ impl util for Cephalon{
 
 
         //Create the index to be saved in .cephalon
-        let index = create_index((*project_path).to_path_buf(),384);
+        let _index: HNSWIndex<f32, usize> = create_index((*project_path).to_path_buf(),384);
         
         //Create the sqlite database to be saved in .cephalon
         let conn = create_sqlite_db((*project_path).to_path_buf());
         match conn.close(){
-            Ok(c)=>println!("Successfully created database"),
+            Ok(_c)=>println!("Successfully created database"),
             Err(err)=>panic!("Error close database connection: {:?}",err)
         }
 

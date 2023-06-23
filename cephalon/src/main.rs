@@ -2,7 +2,7 @@
 
 use cephalon::knowledge_base::{
     Cephalon,
-    util, Matches,
+    Util, Matches,
 };
 use clap::{
     Args,

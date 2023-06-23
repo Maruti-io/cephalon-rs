@@ -1,7 +1,5 @@
 use minidom::{
-    Element,
-    Node,
-    NSChoice, node
+    Element
 };
 
 use hora::index::hnsw_idx::HNSWIndex;
@@ -137,10 +135,10 @@ impl document_uploads for Document{
 ///encased in a vector. Make sure that the text in a document is split into chunks that the model can take as an input. 
 fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
     
-    let mut project_path = path.clone();
+    let mut project_path: PathBuf = path.clone();
     project_path.push("cephalon.index");
     println!("{:?}",project_path);
-    let mut index = create_index(project_path.clone(),384);
+    let mut index: HNSWIndex<f32, usize> = create_index(project_path.clone(),384);
 
     let mut id:usize = 0;
     for doc in doc_list.iter(){
@@ -339,7 +337,7 @@ pub fn get_text_from_docx(file_path:String)->Option<String>{
     let file: File;
     match File::open(file_path){
         Ok(f)=>file=f,
-        Err(e)=> return None
+        Err(_e)=> return None
     }
 
     let mut zip_reader: ZipArchive<_>;
@@ -353,10 +351,10 @@ pub fn get_text_from_docx(file_path:String)->Option<String>{
         Err(_err)=> return None
     }
 
-    let outcome: std::result::Result<usize, std::io::Error> = document_xml_file.read_to_string(&mut xml_string);
+    let _outcome: std::result::Result<usize, std::io::Error> = document_xml_file.read_to_string(&mut xml_string);
     let element:Element = xml_string.parse().unwrap();
     let mut node_que:VecDeque<&Element> = VecDeque::new();
-    let mut text_string:String = String::new();
+    let mut _text_string:String = String::new();
     node_que.push_back(&element);
 
     while let Some(node) = node_que.pop_front(){//Breadth First Traversal of XML Tree

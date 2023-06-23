@@ -4,7 +4,6 @@ pub mod knowledge_base;
 pub mod vectordb;
 
 use document::{
-    split_text_into_chunks,
     get_text_from_pdf,
     get_text_from_docx,
     get_text_from_txt
@@ -18,7 +17,6 @@ pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 
-use std::time::Instant;
 
 #[cfg(test)]
 mod tests {
@@ -32,22 +30,17 @@ mod tests {
 
     #[test]
     fn split_text_into_chunks_test(){
-        let result = split_text_into_chunks("Split this test please!!".to_string(), 5).unwrap();
+        let result = document::split_text_into_chunks("Split this test please!!".to_string(), 5).unwrap();
         assert_eq!(result,vec!["Split"," this", " test"," plea","se!!"]);
     }    
 
     #[test]
     fn encode_text_test(){
         let sentence = "This is a sentence that will be embedded!".to_string();
-        let start_time = Instant::now();
-        let model_name = "all-MiniLM-L6-v2".to_string();
-        let result = encode_text(&vec![sentence]);
+        let start_time = std::time::Instant::now();
+        let _model_name = "all-MiniLM-L6-v2".to_string();
+        let _result = encode_text(&vec![sentence]);
         println!("Time to generate embeddings: {:?}",start_time.elapsed());
-    }
-
-    #[test]
-    fn read_text_from_pdf_test(){
-
     }
 
 }
