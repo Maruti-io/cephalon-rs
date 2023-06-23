@@ -5,6 +5,11 @@ Cephalon can provide:
 * Semantic Search ✅
 * Multi-Modality [Schduled to start in late Fall 2023] ❔
     * Support for Images [Scheduled to start in late Fall 2023] ❔
+* Support for masking private data ❔
+
+------
+Join us on our Adventure
+Star us on [GitHub](https://github.com/Maruti-io/cephalon-rs)
 ------
 # Installing Cephalon
 
@@ -108,4 +113,5 @@ Cephalon-rs is the base version of Cephalon purely written in Rust. It also uses
 * Word Documents (.docx) ✅
 * Text (.txt) ✅
 * JSON [Scheduled for Summer 2023] ❔
+
 
