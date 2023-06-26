@@ -1,27 +1,56 @@
-use crate::model::encode_text;
-use hora::core::ann_index::ANNIndex;
-use rayon::prelude::*;
-use hora::index::hnsw_idx::HNSWIndex;
+use crate::models::model::encode_text;
+
+use rayon::{prelude::*, vec};
+
 use rusqlite::{Connection, Statement};
 
-use crate::document::{
+use hora::index::hnsw_idx::HNSWIndex;
+use hora::core::ann_index::{
+    ANNIndex,
+    SerializableIndex
+};
+use hora::core::metrics::Metric;
+
+use crate::documents::document::{
     Document,
-    get_file_list,
     get_file_text,
-    document_uploads
+    get_file_list
 };
 
-use crate::vectordb::{
-    create_sqlite_db,
+
+
+use crate::database::vectordb::{
     create_index,
-    load_index, load_sqlite_db
+    load_index, save_index, 
+};
+
+use crate::database::sql_database::{
+    create_sqlite_db,
+    load_sqlite_db,
+    insert_data_into_sql_db
 };
 
 
 use std::fs::create_dir;
 use std::path::PathBuf;
 use std::io::ErrorKind;
-use std::sync::Arc;
+use std::fmt;
+
+
+
+type Result<T> = std::result::Result<T, KnowledgeBaseError>;
+
+/// SQL Error
+#[derive(Debug, Clone)]
+pub struct KnowledgeBaseError;
+
+// Generation of an error is completely separate from how it is displayed.
+// There's no need to be concerned about cluttering complex logic with the display style.
+impl fmt::Display for KnowledgeBaseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid sql transaction or connection")
+    }
+}
 
 
 #[derive(Debug)]
@@ -62,17 +91,19 @@ impl Cephalon{
         //Get all the supported Documents from the directory and store it in documents
         let mut doc_list:Vec<Document>;
         match get_file_list(path){
-            Ok(f_list)=>{
+            Some(f_list)=>{
                 doc_list=f_list;
             },
-            Err(err)=>panic!("{:?}",err)
+            None=>{
+                panic!("Unable to get a list of file!")
+            }
         }
 
         //Extract text from all the documents in the doc_list
         self.get_text_from_all_docs(&mut doc_list);
 
         //Generate encodings for all the text of a document in the list doc_list
-        Document::encode_and_upload_documents(&mut doc_list, (*project_path).to_path_buf());
+        Document::build_semantic_search(&mut doc_list, (*project_path).to_path_buf());
 
     }
 
@@ -153,9 +184,6 @@ impl Util for Cephalon{
             }
         }
 
-
-
-
         //Create the index to be saved in .cephalon
         let _index: HNSWIndex<f32, usize> = create_index((*project_path).to_path_buf(),384);
         
@@ -172,5 +200,104 @@ impl Util for Cephalon{
     /// Load an existing Cephalon project and return it as a struct. 
     fn load(path:PathBuf)->Cephalon{
         Cephalon{path:path.to_path_buf(), documents:None}
+    }
+}
+
+pub trait DocumentEncoder{
+    fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf)->Result<()>;
+    fn encode_text_via_model(&self, model:&str)->Option<Vec<Vec<f32>>>;
+}
+
+impl DocumentEncoder for Document{
+
+    /// Building Semantic Search for a vector of documents. 
+    fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf)->Result<()>{
+        // We iterate through documents, generate the embeddings, and add the embeddings to index. 
+        //Get the index
+        let mut index:HNSWIndex<f32,usize> = create_index(project_path.clone(), 384);
+        let mut id:usize = 0;
+
+        for doc in doc_list{
+            match doc.encode_text_via_model("all-MiniLM-L6-v2"){
+                Some(vector_embeddings)=>{
+                    let encoding_len: usize = vector_embeddings.len();
+                    let sentences:&Vec<String>; 
+                    match doc.get_document_data(){
+                        Some(data)=>{
+                            sentences = data;
+                            for encoding_index in 0..encoding_len{
+                                id+=1;
+                                //Insert it into the index
+                                match index.add(&vector_embeddings[encoding_index], id){
+                                    Ok(_msg)=>{},
+                                    Err(err)=>{
+                                        println!("Error: {}, on id:{}",err,id);
+                                    }
+                                }
+        
+                                //Insert it into sql db for text retreival 
+                                match insert_data_into_sql_db(project_path.clone() ,&doc.get_document_name_as_string().unwrap(),&sentences[encoding_index],id){
+                                    Ok(_msg)=>{},
+                                    Err(err)=>{
+                                        println!("Error inserting line_id:{} due to error:{:?}",encoding_index, err);
+                                    }
+                                }
+                                
+                            }
+                        },
+                        None=>{
+                            println!("No Text found for file:{}",doc.get_document_name_as_string().unwrap());
+                            continue
+                        }
+                    }
+
+                },
+                None=>{
+                    println!("Error generating embeddings for: {:?}",doc.get_document_name_as_string().unwrap());
+                    continue
+                }
+            }
+        }
+
+        save_index(&mut index, project_path);
+
+
+        Ok(())
+    }
+
+    /// Encode text of the current document via a sentence embedding model.
+    /// If the model was unable to encode the text into vector embeddings then 
+    /// none is returned. 
+    fn encode_text_via_model(&self, _model:&str)->Option<Vec<Vec<f32>>>{
+        let mut encodings:Vec<Vec<f32>> = vec![];
+        let sentences:Vec<String>;
+        match self.get_document_data(){
+            Some(vec_string)=>{
+                sentences = vec_string.to_vec();
+            },
+            None=>{
+                println!("Document has no parsed data");
+                return None
+            }
+        }
+        match std::panic::catch_unwind(move || {
+            match encode_text(&sentences){
+                Some(embedded_sentences)=>encodings=embedded_sentences,
+                None=>{
+                    println!("Unable to generate Embeddings for document:{:?}",self.get_document_name_as_string());
+                    return None
+                }
+            }
+            Some(encodings)
+        }){
+            Ok(output)=>{
+                return output;
+            },
+            Err(_err)=>{
+                println!("Error or panic while encoding and uploading file");
+                return None
+            }
+        }
+        
     }
 }

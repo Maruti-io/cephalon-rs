@@ -1,54 +1,24 @@
-use std::path::PathBuf;
-use rayon::{prelude::*, current_thread_index};
-
-use serde::ser::{
-    Serialize,
-    Serializer
-};
-
-
-use hora::index::hnsw_idx::HNSWIndex;
-use hora::index::{
-    hnsw_params::HNSWParams
-};
-use hora::core::ann_index::SerializableIndex;
-
 use rusqlite::{
     Connection, 
-    Result
 };
 
-use crate::document::Document;
+use std::path::PathBuf;
 
+use std::fmt;
 
+type Result<T> = std::result::Result<T, SQLError>;
 
-#[doc = "Create a HNSWIndex at location specified at path, with dimension dim"]
-pub fn create_index(path:PathBuf, dim:usize)->HNSWIndex<f32,usize>{
-    let mut index = HNSWIndex::<f32, usize>::new(
-        dim,
-        &HNSWParams::<f32>::default(),
-    );
+/// SQL Error
+#[derive(Debug, Clone)]
+pub struct SQLError;
 
-    index
-}
-
-/// Load a HNSWIndex from the location specified path.
-pub fn load_index(path:PathBuf)->HNSWIndex<f32,usize>{
-    let mut project_path:PathBuf = path.clone();
-    project_path.push("cephalon.index");
-    let mut index:HNSWIndex<f32,usize>;
-    match HNSWIndex::<f32,usize>::load(project_path.to_str().unwrap()){
-        Ok(hnsw)=>{
-            index = hnsw;
-        },
-        Err(err)=>{
-            panic!("Error loading Index: {:?}",err)
-        }
+// Generation of an error is completely separate from how it is displayed.
+// There's no need to be concerned about cluttering complex logic with the display style.
+impl fmt::Display for SQLError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid sql transaction or connection")
     }
-    
-    index
 }
-
 
 ///This function generates a new sqlite project at the specified project path.
 pub fn create_sqlite_db(path:PathBuf)->Connection{
@@ -93,4 +63,29 @@ pub fn load_sqlite_db(path:&PathBuf)->Option<Connection>{
             panic!("Error loading connection from project: {:?}",err);
         }
     }
+}
+
+pub fn insert_data_into_sql_db(path:PathBuf,doc_name:&str,sentence:&str,id:usize)->Result<()>{
+    let conn:Connection;
+    match load_sqlite_db(&path){
+        Some(sql_conn)=>{
+            conn = sql_conn;
+        },
+        None=>{
+            return Err(SQLError)
+        }
+
+    }
+    let params = (doc_name, sentence, id.to_string());
+                    match conn.execute("
+                    INSERT INTO Vectors (DocumentName,Line,Label) VALUES (?1,?2,?3)
+                    ", params.clone()){
+                        Ok(_msg)=>{
+                            Ok(())
+                        },
+                        Err(err)=>{
+                            println!("Error Inserting data into sqlite: {:?}",err);
+                            Err(SQLError)
+                        }
+                    }
 }

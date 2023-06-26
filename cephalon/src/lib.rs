@@ -1,15 +1,16 @@
-pub mod model;
-pub mod document;
+pub mod models;
+pub mod documents;
 pub mod knowledge_base;
-pub mod vectordb;
+pub mod database;
 
-use document::{
+use documents::document::{
+    split_text_into_chunks,
     get_text_from_pdf,
     get_text_from_docx,
     get_text_from_txt
 };
 
-use model::{
+use models::model::{
     encode_text
 };
 
@@ -30,7 +31,7 @@ mod tests {
 
     #[test]
     fn split_text_into_chunks_test(){
-        let result = document::split_text_into_chunks("Split this test please!!".to_string(), 5).unwrap();
+        let result = split_text_into_chunks("Split this test please!!".to_string(), 5).unwrap();
         assert_eq!(result,vec!["Split"," this", " test"," plea","se!!"]);
     }    
 

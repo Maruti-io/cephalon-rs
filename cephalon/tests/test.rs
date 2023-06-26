@@ -1,6 +1,6 @@
 use cephalon;
 
-use cephalon::document::{
+use cephalon::documents::document::{
     split_text_into_chunks,
     get_text_from_pdf,
     get_text_from_docx,
@@ -8,12 +8,11 @@ use cephalon::document::{
     get_file_list,
 };
 
-use cephalon::model::{
+use cephalon::models::model::{
     encode_text
 };
 
-use cephalon::vectordb::{
-};
+
 
 use cephalon::knowledge_base::{
     Cephalon,

@@ -2,17 +2,6 @@ use minidom::{
     Element
 };
 
-use hora::index::hnsw_idx::HNSWIndex;
-use hora::core::ann_index::{
-    ANNIndex,
-    SerializableIndex
-};
-use hora::core::metrics::Metric;
-
-use rusqlite::{
-    Connection
-};
-
 use zip::read::ZipArchive;
 
 use std::ffi::{
@@ -26,26 +15,19 @@ use std::path::{
 use std::io::{
     Result,
     Read,
-    Seek
 };
 use std::fs::{
-    Metadata,
-    read_dir,
-    ReadDir, 
-    DirEntry,
     read_to_string,
-    File
+    File,
+    ReadDir,
+    read_dir,
+    DirEntry,
+    Metadata,
 };
 
 use std::collections::VecDeque;
-use std::sync::Arc;
 
-use crate::model::encode_text;
-use crate::vectordb::{
-    load_sqlite_db, 
-    create_index,
-    load_index
-};
+
 
 ///Enum containing supported documents.
 pub enum DocType{
@@ -102,140 +84,17 @@ impl Document{
     pub fn set_document_data(&mut self, data:Vec<String>){
         self.data = Some(data);
     }
-    /// Encode text of the current document via a sentence embedding model.
-    /// If the model was unable to encode the text into vector embeddings then 
-    /// none is returned. 
-    pub fn encode_text_via_model(&self)->Option<Vec<Vec<f32>>>{
-        let mut encodings:Vec<Vec<f32>> = vec![];
-        let sentences:&Vec<String>;
-        match &self.data{
-            Some(vec_string)=>sentences=vec_string,
-            None=>{
-                println!("Document has no parsed data");
-                return None
-            }
-        }
-        match std::panic::catch_unwind(move || {
-            match encode_text(sentences){
-                Some(embedded_sentences)=>encodings=embedded_sentences,
-                None=>{
-                    println!("Unable to generate Embeddings for document:{:?}",self.name);
-                    return None
-                }
-            }
-            Some(encodings)
-        }){
-            Ok(output)=>{
-                return output;
-            },
-            Err(_err)=>{
-                println!("Error or panic while encoding and uploading file");
-                return None
-            }
-        }
-        
+
+    pub fn get_document_data(&self)->&Option<Vec<String>>{
+        &self.data
     }
 
 }
 
-pub trait document_uploads{
-    fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf);
-}
-
-impl document_uploads for Document{
-   
-///Description: This function encodes the text of documents in a doc_list using a Sentence Embedding Model. Then returns those embeddings
-///encased in a vector. Make sure that the text in a document is split into chunks that the model can take as an input. 
-fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
-    
-    let mut project_path: PathBuf = path.clone();
-    project_path.push("cephalon.index");
-    println!("{:?}",project_path);
-    let mut index: HNSWIndex<f32, usize> = create_index(project_path.clone(),384);
-
-    let mut id:usize = 0;
-    for doc in doc_list.iter(){
-        println!("{:?} encoding and uploading to index",doc.get_document_name_as_string().unwrap());
-        let encodings:Vec<Vec<f32>>;
-
-        match doc.encode_text_via_model(){
-            Some(embeddings) => encodings = embeddings,
-            None=>{
-                continue
-            }
-        }
-        
-
-        let conn:Connection;
-        match load_sqlite_db(&path){
-            Some(db_conn)=>{
-                conn = db_conn;
-            },
-            None=>{
-                panic!("Unable to create a connection to sqlitedb");
-            }
-        }
-        
-        
-        let doc_name:String;
-        match doc.get_document_name_as_string(){
-            Ok(doc_name_as_string)=> doc_name=doc_name_as_string,
-            Err(err)=>panic!("Error getting document name {:}",err)
-        }
-        let len_sentence_encodings:usize = encodings.len();
-
-        for i in 0..len_sentence_encodings{
-            let encoding = &encodings[i];
-            let sentence = &doc.data.as_ref().unwrap()[i];
-            id+=1;
-            match index.add(encoding,id){
-                Ok(_msg)=>{
-                    let params = (&doc_name, sentence, id.to_string());
-                    match conn.execute("
-                    INSERT INTO Vectors (DocumentName,Line,Label) VALUES (?1,?2,?3)
-                    ", params.clone()){
-                        Ok(_msg)=>{
-                        },
-                        Err(err)=>{
-                            println!("Error Inserting data into sqlite: {:?}",err);
-                        }
-                    }
-                },
-                Err(err)=>{
-                    panic!("Error inserting to index: {:?}",err)
-                }
-            }
-        }
-    }
-    match index.build(Metric::Euclidean){
-        Ok(_msg)=>{
-            match index.dump(&project_path.to_str().unwrap()){
-                Ok(_dump_msg)=>{},
-                Err(dump_err)=>{
-                    println!("{}",dump_err);
-                }
-            }
-        },
-        Err(err)=>{
-            println!("{}",err);
-        }
-    }
-}
-}
-
-
-///This function return True if the file format is supported by this program. It takes in OsStr and converts that
-///into a String type via lossy conversion. 
-fn is_supported(file_name:&OsStr)->bool{
-    let split_str:String = file_name.to_string_lossy().to_string();
-    let splits = split_str.rsplit_once('.').unwrap();
-    let supported_types:[&str;3] = ["pdf","docx","txt"];
-    supported_types.contains(&splits.1)
-}
 
 
 ///Description: get_file_list() will get all the files in the current directory, create a Document object, and store it in a vector. This function will then return that vector.
-pub fn get_file_list(path:&PathBuf) ->Result<Vec<Document>> {
+pub fn get_file_list(path:&PathBuf) ->Option<Vec<Document>> {
     let path_objects:ReadDir = read_dir(path).unwrap();
     let mut file_list:Vec<Document> = vec![];
     for path_object in path_objects{
@@ -278,12 +137,20 @@ pub fn get_file_list(path:&PathBuf) ->Result<Vec<Document>> {
         }
     }
     
-    Ok(file_list)
+    Some(file_list)
     
 }
 
 
 
+///This function return True if the file format is supported by this program. It takes in OsStr and converts that
+///into a String type via lossy conversion. 
+fn is_supported(file_name:&OsStr)->bool{
+    let split_str:String = file_name.to_string_lossy().to_string();
+    let splits = split_str.rsplit_once('.').unwrap();
+    let supported_types:[&str;3] = ["pdf","docx","txt"];
+    supported_types.contains(&splits.1)
+}
 
 ///Given a Document, this function will determine if the Document is supported or not via the is_supported function from
 ///the document, and if it is supported then call the appropriate text extraction function to extract text, then split the 
@@ -325,7 +192,7 @@ pub fn get_file_text( doc:&Document, chunk_size:usize)->Option<Vec<String>>{
 ///  # Example
 ///  ```
 ///let my_string:String = String::from("Split this string!");
-///let split_string:Vec<String> = cephalon::document::split_text_into_chunks(my_string, 5).unwrap();
+///let split_string:Vec<String> = cephalon::documents::document::split_text_into_chunks(my_string, 5).unwrap();
 ///assert_eq!(split_string, vec!["Split", " this"," stri","ng!"]);
 ///  ```
 pub fn split_text_into_chunks(text:String, chunk_size:usize)->Result<Vec<String>>{
