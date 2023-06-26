@@ -3,6 +3,7 @@ use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsModel, SentenceEmbeddingsModelType
 };
 
+
 ///Description: Generating Vector encoding_model using sentence_transformers models using rust-bert. 
 ///Use Case: Use this to create embeddings for sentences.   
 pub fn encode_text(text:&Vec<String>)->Option<Vec<Vec<f32>>>{
@@ -18,7 +19,11 @@ pub fn encode_text(text:&Vec<String>)->Option<Vec<Vec<f32>>>{
         }
 
     match model.encode(text){
-        Ok(encodings)=>Some(encodings.to_owned()),
-        Err(err)=>panic!("Error encoding text: {:?}",err)
-    }
+        Ok(encodings)=>{
+            Some(encodings)
+        },
+        Err(err)=>{
+            panic!("Error encoding text: {:?}",err)
+        }
+    }  
 }

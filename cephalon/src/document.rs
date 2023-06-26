@@ -110,17 +110,30 @@ impl Document{
         let sentences:&Vec<String>;
         match &self.data{
             Some(vec_string)=>sentences=vec_string,
-            None=>return None
-        }
-
-        match encode_text(sentences){
-            Some(embedded_sentences)=>encodings=embedded_sentences,
             None=>{
-                println!("Unable to generate Embeddings for document:{:?}",self.name);
+                println!("Document has no parsed data");
                 return None
             }
         }
-        Some(encodings)
+        match std::panic::catch_unwind(move || {
+            match encode_text(sentences){
+                Some(embedded_sentences)=>encodings=embedded_sentences,
+                None=>{
+                    println!("Unable to generate Embeddings for document:{:?}",self.name);
+                    return None
+                }
+            }
+            Some(encodings)
+        }){
+            Ok(output)=>{
+                return output;
+            },
+            Err(_err)=>{
+                println!("Error or panic while encoding and uploading file");
+                return None
+            }
+        }
+        
     }
 
 }
@@ -144,7 +157,6 @@ fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
     for doc in doc_list.iter(){
         println!("{:?} encoding and uploading to index",doc.get_document_name_as_string().unwrap());
         let encodings:Vec<Vec<f32>>;
-
 
         match doc.encode_text_via_model(){
             Some(embeddings) => encodings = embeddings,
@@ -212,7 +224,6 @@ fn encode_and_upload_documents(doc_list:&mut Vec<Document>, path:PathBuf){
 }
 
 
-
 ///This function return True if the file format is supported by this program. It takes in OsStr and converts that
 ///into a String type via lossy conversion. 
 fn is_supported(file_name:&OsStr)->bool{
@@ -229,7 +240,16 @@ pub fn get_file_list(path:&PathBuf) ->Result<Vec<Document>> {
     let mut file_list:Vec<Document> = vec![];
     for path_object in path_objects{
 
-        let object:DirEntry = path_object.unwrap();
+        let object:DirEntry; 
+        match path_object{
+            Ok(obj)=>{
+                object = obj;
+            },
+            Err(err)=>{
+                println!("Error reading file: {:?}",err);
+                continue;
+            }
+        }
         let file_metadata:Metadata = object.metadata().unwrap();
         let file_name:OsString = object.file_name();
         let file_path:PathBuf = object.path();
@@ -375,20 +395,29 @@ pub fn get_text_from_docx(file_path:String)->Option<String>{
 
 ///Description: This function extracts text from a pdf file file via the pdf_extract crate.  
 pub fn get_text_from_pdf(file_path:String)->Option<String>{
-    let result_string:String;
-    let bytes: Vec<u8>;
-    match std::fs::read(file_path){
-        Ok(fs_bytes)=> bytes=fs_bytes,
-        Err(_err)=>{
-            println!("Error reading file: {:?}",_err);
+    match std::panic::catch_unwind(move || {
+        let result_string:String;
+        let bytes: Vec<u8>;
+        match std::fs::read(file_path){
+            Ok(fs_bytes)=> bytes=fs_bytes,
+            Err(_err)=>{
+                println!("Error reading file: {:?}",_err);
+                return None
+            }
+        }
+
+        match pdf_extract::extract_text_from_mem(&bytes){
+            Ok(pdf_text)=>result_string = pdf_text,
+            Err(_err)=> return None
+        }
+        
+        Some(result_string)
+    }){
+        Ok(output)=>return output,
+        Err(err)=>{
+            println!("Error reading pdf: {:?}",err);
             return None
         }
     }
-
-    match pdf_extract::extract_text_from_mem(&bytes){
-        Ok(pdf_text)=>result_string = pdf_text,
-        Err(_err)=> return None
-    }
     
-    Some(result_string)
 }

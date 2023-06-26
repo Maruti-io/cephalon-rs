@@ -47,7 +47,7 @@ impl Cephalon{
                 None=>println!("Error reading document {:?}",doc.get_document_name_as_string())
             }
             println!("\r Finished Processing file {:?}",doc.get_document_name_as_string());
-        })
+        });
     }
     
     
