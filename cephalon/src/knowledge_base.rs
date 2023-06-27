@@ -1,3 +1,4 @@
+#[cfg(not(feature="no-ml"))]
 use crate::models::model::encode_text;
 
 use rayon::{prelude::*, vec};
@@ -41,6 +42,7 @@ use std::fmt;
 type Result<T> = std::result::Result<T, KnowledgeBaseError>;
 
 /// SQL Error
+#[cfg(not(feature="no-ml"))]
 #[derive(Debug, Clone)]
 pub struct KnowledgeBaseError;
 
@@ -52,21 +54,23 @@ impl fmt::Display for KnowledgeBaseError {
     }
 }
 
-
+#[cfg(not(feature="no-ml"))]
 #[derive(Debug)]
 pub struct Matches{
     pub document_name:String,
     pub line:String,
 }
 
+#[cfg(not(feature="no-ml"))]
 #[derive(Debug)]
 pub struct Cephalon{
     path:PathBuf,
     documents:Option<Vec<Document>>
 }
 
+#[cfg(not(feature="no-ml"))]
 impl Cephalon{
-
+    
     fn get_text_from_all_docs(self, doc_list:&mut Vec<Document>){
         doc_list.par_iter_mut().for_each(|doc: &mut Document|{
             println!("Now Processing {:?} ...",doc.get_document_name_as_string());
@@ -163,11 +167,13 @@ impl Cephalon{
     
 }
 
+#[cfg(not(feature="no-ml"))]
 pub trait Util{
     fn new(path:PathBuf)->Self;
     fn load(path:PathBuf)->Self;
 }
 
+#[cfg(not(feature="no-ml"))]
 impl Util for Cephalon{
     /// Create a new Cephalon struct
     fn new(path:PathBuf)->Cephalon{
@@ -203,11 +209,13 @@ impl Util for Cephalon{
     }
 }
 
+#[cfg(not(feature="no-ml"))]
 pub trait DocumentEncoder{
     fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf)->Result<()>;
     fn encode_text_via_model(&self, model:&str)->Option<Vec<Vec<f32>>>;
 }
 
+#[cfg(not(feature="no-ml"))]
 impl DocumentEncoder for Document{
 
     /// Building Semantic Search for a vector of documents. 

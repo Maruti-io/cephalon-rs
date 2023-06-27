@@ -1,7 +1,19 @@
 pub mod models;
 pub mod documents;
-pub mod knowledge_base;
 pub mod database;
+
+
+#[cfg(not(feature="no-ml"))]
+pub mod knowledge_base;
+
+
+/*
+IMPORTANT: PLEASE NOTE
+Using the no-ml feature will ignore code written in the knowledge_base.rs, models directory, and some code in main.rs 
+To ensure proper testing please use "cargo test --all-features" command
+
+ */
+
 
 use documents::document::{
     split_text_into_chunks,
@@ -10,6 +22,7 @@ use documents::document::{
     get_text_from_txt
 };
 
+#[cfg(not(feature="no-ml"))]
 use models::model::{
     encode_text
 };
@@ -35,6 +48,7 @@ mod tests {
         assert_eq!(result,vec!["Split"," this", " test"," plea","se!!"]);
     }    
 
+    #[cfg(not(feature="no-ml"))]
     #[test]
     fn encode_text_test(){
         let sentence = "This is a sentence that will be embedded!".to_string();

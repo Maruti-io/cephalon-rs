@@ -1,12 +1,11 @@
-use rust_bert::pipelines::sentence_embeddings::{
-    SentenceEmbeddingsBuilder,
-    SentenceEmbeddingsModel, SentenceEmbeddingsModelType
-};
-
-
 ///Description: Generating Vector encoding_model using sentence_transformers models using rust-bert. 
 ///Use Case: Use this to create embeddings for sentences.   
+#[cfg(not(feature="no-ml"))]
 pub fn encode_text(text:&Vec<String>)->Option<Vec<Vec<f32>>>{
+    use rust_bert::pipelines::sentence_embeddings::{
+        SentenceEmbeddingsBuilder,
+        SentenceEmbeddingsModel, SentenceEmbeddingsModelType
+    };
     if text.len() == 0{
         println!("No text found");
         return None

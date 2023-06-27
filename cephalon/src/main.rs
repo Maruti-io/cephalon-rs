@@ -1,5 +1,5 @@
 
-
+#[cfg(not(feature="no-ml"))]
 use cephalon::knowledge_base::{
     Cephalon,
     Util, Matches,
@@ -50,7 +50,7 @@ pub struct QueryKnowledgeBaseCommand{
     pub query:String,
 }
 
-
+#[cfg(not(feature="no-ml"))]
 fn main(){
     match CommandArgs::parse().entity_type{
         EntityType::Init(_)=>{
@@ -85,5 +85,10 @@ fn main(){
             println!("Time to generate results: {:?}",now.elapsed().as_secs());
         }
     }
+
+}
+
+#[cfg(feature="no-ml")]
+fn main(){
 
 }
