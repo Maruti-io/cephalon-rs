@@ -1,5 +1,12 @@
 use cephalon;
 
+/*
+IMPORTANT: PLEASE NOTE
+Using the no-ml feature will ignore code written in the knowledge_base.rs, models directory, and some code in main.rs 
+To ensure proper testing please use "cargo test --all-features" command
+
+ */
+
 use cephalon::documents::document::{
     split_text_into_chunks,
     get_text_from_pdf,
@@ -8,12 +15,13 @@ use cephalon::documents::document::{
     get_file_list,
 };
 
+#[cfg(not(feature="no-ml"))]
 use cephalon::models::model::{
     encode_text
 };
 
 
-
+#[cfg(not(feature="no-ml"))]
 use cephalon::knowledge_base::{
     Cephalon,
     Util
@@ -50,6 +58,7 @@ mod tests {
         assert_eq!(result,vec!["hello, world!"]);
     }    
 
+    #[cfg(not(feature="no-ml"))]
     #[test]
     fn encode_text_test(){
         let sentence = vec!["Ok now I am writing a test sentence for my encoding procedure. This sentence will be encoded. I am also doing one more thing where I want to get up 256 characters because why not. Ok now I just need 100 more characters, how many of them did I get??🙂".to_string()];
@@ -58,6 +67,7 @@ mod tests {
         println!("Time to generate embeddings: {:?}",start_time.elapsed());
     }
 
+    #[cfg(not(feature="no-ml"))]
     #[test]
     fn create_new_cephalon_test(){
         let mut project_path: PathBuf = std::env::current_dir().unwrap();

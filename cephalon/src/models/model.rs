@@ -11,12 +11,12 @@ pub fn encode_text(text:&Vec<String>)->Option<Vec<Vec<f32>>>{
         return None
     }
     let model:SentenceEmbeddingsModel;
+
     match SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
     .create_model(){
             Ok(sentence_embedding_model)=> model = sentence_embedding_model,
             Err(err)=>panic!("Error Generating Model: {:?}",err)
-        }
-
+        }    
     match model.encode(text){
         Ok(encodings)=>{
             Some(encodings)
