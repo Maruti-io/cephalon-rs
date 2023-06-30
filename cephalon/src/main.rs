@@ -77,7 +77,7 @@ fn main(){
             let now = Instant::now();
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
             let cephalon_knowledge_base = Cephalon::load(current_dir_path.clone());
-            let matches: Vec<Matches> = cephalon_knowledge_base.search(current_dir_path, query.query,5).unwrap();
+            let matches: Vec<(Matches)> = cephalon_knowledge_base.search(current_dir_path, query.query,5).unwrap();
             for search_result in matches{
                 println!("{}, {:?}",search_result.document_name, search_result.line);
             }

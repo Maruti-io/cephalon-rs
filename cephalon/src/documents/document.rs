@@ -145,7 +145,7 @@ pub fn get_file_list(path:&PathBuf) ->Option<Vec<Document>> {
 
 ///This function return True if the file format is supported by this program. It takes in OsStr and converts that
 ///into a String type via lossy conversion. 
-fn is_supported(file_name:&OsStr)->bool{
+pub fn is_supported(file_name:&OsStr)->bool{
     let split_str:String = file_name.to_string_lossy().to_string();
     let splits = split_str.rsplit_once('.').unwrap();
     let supported_types:[&str;3] = ["pdf","docx","txt"];

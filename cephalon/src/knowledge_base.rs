@@ -3,7 +3,6 @@ use crate::models::model::encode_text;
 
 use rayon::{prelude::*, vec};
 
-use rusqlite::{Connection, Statement};
 
 use hora::index::hnsw_idx::HNSWIndex;
 use hora::core::ann_index::{
@@ -22,13 +21,15 @@ use crate::documents::document::{
 
 use crate::database::vectordb::{
     create_index,
-    load_index, save_index, 
+    load_index, 
+    save_index,
 };
 
 use crate::database::sql_database::{
     create_sqlite_db,
     load_sqlite_db,
-    insert_data_into_sql_db
+    insert_data_into_sql_db,
+    sql_search_by_id
 };
 
 
@@ -46,8 +47,7 @@ type Result<T> = std::result::Result<T, KnowledgeBaseError>;
 #[derive(Debug, Clone)]
 pub struct KnowledgeBaseError;
 
-// Generation of an error is completely separate from how it is displayed.
-// There's no need to be concerned about cluttering complex logic with the display style.
+
 impl fmt::Display for KnowledgeBaseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "invalid sql transaction or connection")
@@ -113,51 +113,36 @@ impl Cephalon{
 
     ///Search Index for related queries, and covert it back to original text
     pub fn search(self, path:PathBuf, query:String,count:usize)->Option<Vec<Matches>>{
-        let results:Vec<usize>;
+        let mut results:Vec<usize> = vec![];
         let mut project_path = path.clone();
         project_path.push(".cephalon");
         match encode_text(&vec![query]){ //Generate Embeddings for the query
-            Some(encodings)=>{ 
-                
-                let index: HNSWIndex<f32, usize> = load_index(project_path.clone());
-                results = index.search(&encodings[0], count);
+            Some(encodings)=>{
+                for encoding in encodings{
+                    let index: HNSWIndex<f32, usize> = load_index(project_path.clone());
+                    match encoding.1{//Embeddings are stored in location 1 as Option<Vec<f32>>
+                        Some(mut embedding)=>{
+                            results.append(&mut index.search(&mut embedding, count));
+                        },
+                        None=>{}
+                    }
+                    
+                }  
             },
             None=>{
                 return None
             }
         }
-        let conn:Connection;
-        match load_sqlite_db(&project_path){
-            Some(sql_db)=>{
-                conn=sql_db;
+
+        let mut search_results:Vec<Matches> = vec![];
+        match sql_search_by_id(project_path,results){
+            Some(search_output)=>{
+                for output in search_output{
+                    search_results.push(Matches{document_name:output.0, line:output.1});
+                }
             },
             None=>{
-                panic!("Error loading sql db to match searched.");
-            }
-        }
-        
-        let mut stmt: Statement<'_> = conn.prepare("SELECT DocumentName, Line FROM  Vectors WHERE Id = (?1)").unwrap();
-
-        let mut search_results:Vec<Matches>=vec![];
-        
-        for result in results{
-            let match_iter = stmt.query_map(&[&result], |row| {
-                
-                Ok(Matches {
-                    document_name: row.get(0)?,
-                    line: row.get(1)?,
-                })
-            }).unwrap();
-
-            for m in match_iter{
-                match m{
-                    Ok(search_result)=>{
-                        search_results.push(search_result);
-                    },
-                    Err(err)=>{
-                        println!("Error getting search result: {:?}",err);
-                    }
-                }
+                return None
             }
         }
 
@@ -212,7 +197,7 @@ impl Util for Cephalon{
 #[cfg(not(feature="no-ml"))]
 pub trait DocumentEncoder{
     fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf)->Result<()>;
-    fn encode_text_via_model(&self, model:&str)->Option<Vec<Vec<f32>>>;
+    fn encode_text_via_model(&self, model:&str)->Option<Vec<(String,Option<Vec<f32>>)>>;
 }
 
 #[cfg(not(feature="no-ml"))]
@@ -228,28 +213,38 @@ impl DocumentEncoder for Document{
         for doc in doc_list{
             match doc.encode_text_via_model("all-MiniLM-L6-v2"){
                 Some(vector_embeddings)=>{
-                    let encoding_len: usize = vector_embeddings.len();
                     let sentences:&Vec<String>; 
                     match doc.get_document_data(){
                         Some(data)=>{
                             sentences = data;
-                            for encoding_index in 0..encoding_len{
+                            for embedding_data in vector_embeddings{
                                 id+=1;
-                                //Insert it into the index
-                                match index.add(&vector_embeddings[encoding_index], id){
-                                    Ok(_msg)=>{},
-                                    Err(err)=>{
-                                        println!("Error: {}, on id:{}",err,id);
+                                match embedding_data.1{
+                                    Some(embedding)=>{
+                                        //Insert it into the index
+                                        match index.add(&embedding, id){
+                                            Ok(_msg)=>{},
+                                            Err(err)=>{
+                                                println!("Error: {}, on id:{}",err,id);
+                                            }
+                                        }
+
+                                        //Insert it into sql db for text retreival 
+                                        match insert_data_into_sql_db(project_path.clone() ,&doc.get_document_name_as_string().unwrap(),&embedding_data.0,id){
+                                            Ok(_msg)=>{},
+                                            Err(err)=>{
+                                                println!("Error inserting line:{} due to error:{:?}",embedding_data.0, err);
+                                            }
+                                }
+
+                                    },
+                                    None=>{
+
                                     }
                                 }
+                                
         
-                                //Insert it into sql db for text retreival 
-                                match insert_data_into_sql_db(project_path.clone() ,&doc.get_document_name_as_string().unwrap(),&sentences[encoding_index],id){
-                                    Ok(_msg)=>{},
-                                    Err(err)=>{
-                                        println!("Error inserting line_id:{} due to error:{:?}",encoding_index, err);
-                                    }
-                                }
+                                
                                 
                             }
                         },
@@ -276,7 +271,7 @@ impl DocumentEncoder for Document{
     /// Encode text of the current document via a sentence embedding model.
     /// If the model was unable to encode the text into vector embeddings then 
     /// none is returned. 
-    fn encode_text_via_model(&self, _model:&str)->Option<Vec<Vec<f32>>>{
+    fn encode_text_via_model(&self, _model:&str)->Option<Vec<(String,Option<Vec<f32>>)>>{
         let mut encodings:Vec<Vec<f32>> = vec![];
         let sentences:Vec<String>;
         match self.get_document_data(){
@@ -288,24 +283,14 @@ impl DocumentEncoder for Document{
                 return None
             }
         }
-        match std::panic::catch_unwind(move || {
-            match encode_text(&sentences){
-                Some(embedded_sentences)=>encodings=embedded_sentences,
+        match encode_text(&sentences){
+                Some(embedded_sentences)=>{
+                    return Some(embedded_sentences)
+                },
                 None=>{
                     println!("Unable to generate Embeddings for document:{:?}",self.get_document_name_as_string());
                     return None
                 }
-            }
-            Some(encodings)
-        }){
-            Ok(output)=>{
-                return output;
-            },
-            Err(_err)=>{
-                println!("Error or panic while encoding and uploading file");
-                return None
-            }
         }
-        
     }
 }

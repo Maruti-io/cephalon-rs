@@ -1,5 +1,5 @@
 use rusqlite::{
-    Connection, 
+    Connection, Statement, 
 };
 
 use std::path::PathBuf;
@@ -88,4 +88,45 @@ pub fn insert_data_into_sql_db(path:PathBuf,doc_name:&str,sentence:&str,id:usize
                             Err(SQLError)
                         }
                     }
+}
+
+
+pub fn sql_search_by_id(project_path:PathBuf,results:Vec<usize>)->Option<Vec<(String,String)>>{
+    let conn:Connection;
+        match load_sqlite_db(&project_path){
+            Some(sql_db)=>{
+                conn=sql_db;
+            },
+            None=>{
+                panic!("Error loading sql db to match searched.");
+            }
+        }
+        
+        let mut stmt: Statement<'_> = conn.prepare("SELECT DocumentName, Line FROM  Vectors WHERE Id = (?1)").unwrap();
+
+        let mut search_results:Vec<(String,String)>=vec![];
+        
+        for result in results{
+            //Get the results from sql database
+            let match_iter = stmt.query_map(&[&result], |row| {
+                let search_match:(String,String) = (row.get(0)?, row.get(1)?);
+                Ok(search_match)
+            }).unwrap();
+
+            //Collect the results from sql database into search_results vector. 
+            for match_result in match_iter{
+                match match_result{
+                    Ok(search_output)=>{
+                        search_results.push(search_output);
+                    },
+                    Err(err)=>{
+                        println!("Error getting some results: {:?}",err);
+                    }
+                }
+            }
+        }
+    
+    
+    
+    Some(search_results) //Return the search result
 }
