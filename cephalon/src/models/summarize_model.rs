@@ -34,7 +34,6 @@ pub fn generate_summary(input:String)->Result<Vec<String>>{
             return Err(SummaryModelError)
         }
     }
-    //    Credits: WikiNews, CC BY 2.5 license (https://en.wikinews.org/wiki/Astronomers_find_water_vapour_in_atmosphere_of_exoplanet_K2-18b)
     let output = summarization_model.summarize(&[input]);
     Ok(output)
 }
