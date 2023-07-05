@@ -9,6 +9,8 @@ pub struct SummaryModelError;
 
 #[cfg(not(feature="no-ml"))]
 pub fn generate_summary(input:String)->Result<Vec<String>>{
+
+    //Credit to Rust-Bert repo at https://github.com/guillaume-be/rust-bert
     use rust_bert::pipelines::common::{ModelResource, ModelType};
     use rust_bert::pipelines::summarization::{SummarizationConfig, SummarizationModel};
     use rust_bert::resources::RemoteResource;
