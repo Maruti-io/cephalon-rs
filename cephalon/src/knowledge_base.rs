@@ -1,6 +1,10 @@
 #[cfg(not(feature="no-ml"))]
-use crate::models::model::encode_text;
+use crate::models::{
+    model::encode_text,
+    summarize_model::generate_summary,
+};
 
+use clap::builder::OsStr;
 use rayon::{prelude::*, vec};
 
 
@@ -14,7 +18,8 @@ use hora::core::metrics::Metric;
 use crate::documents::document::{
     Document,
     get_file_text,
-    get_file_list
+    get_file_list, is_supported, 
+    UnsupportedDocumentError, DocType, get_text_from_docx, get_text_from_pdf, get_text_from_txt
 };
 
 
@@ -198,6 +203,8 @@ impl Util for Cephalon{
 pub trait DocumentEncoder{
     fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf)->Result<()>;
     fn encode_text_via_model(&self, model:&str)->Option<Vec<(String,Option<Vec<f32>>)>>;
+    fn load(file_path:String)->Result<Document>;
+    fn summarize(&self)->Result<Vec<String>>;
 }
 
 #[cfg(not(feature="no-ml"))]
@@ -293,4 +300,64 @@ impl DocumentEncoder for Document{
                 }
         }
     }
+
+    fn load(file_path:String)->Result<Document>{
+
+        let file_metadata:std::fs::Metadata;
+
+        match std::fs::metadata(&file_path){
+            Ok(mdata)=>{
+                file_metadata= mdata;
+            },
+            Err(err)=>{
+                return Err(KnowledgeBaseError)
+            }
+        }
+
+        if !file_metadata.is_file(){//If the Path is not a Document return an error
+            return Err(KnowledgeBaseError)
+        }
+        let file_name:String;
+        match std::path::Path::new(&file_path).file_name(){
+            Some(name)=>{
+                file_name = name.to_string_lossy().to_string();
+            },
+            None=>{
+                return Err(KnowledgeBaseError)
+            }
+        }
+        let document:Document = Document{// 
+            name:file_name,
+            path:PathBuf::from(file_path),
+            metadata:file_metadata,
+            data:None,
+            encodings:None
+        };
+        Ok(document)
+    }
+
+    fn summarize(&self)->Result<Vec<String>> {
+        let doc_text:String;
+        
+        let summary:Vec<String>;
+        match self.get_document_data_as_string(){
+            Ok(doc_text)=>{
+                match generate_summary(doc_text){
+                    Ok(doc_summary)=>{
+                        summary = doc_summary;
+                    },
+                    Err(err)=>{
+                        return Err(KnowledgeBaseError)
+                    }
+                }
+            },
+            Err(err)=>{
+                return Err(KnowledgeBaseError)
+            }
+            
+        }
+        
+        Ok(summary)
+    }
+
 }

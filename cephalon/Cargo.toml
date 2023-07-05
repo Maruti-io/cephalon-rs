@@ -1,9 +1,9 @@
 [package]
 name = "cephalon"
-version = "0.0.7"
+version = "0.0.8"
 edition = "2021"
 authors=["Sagar <sagar.patel@maruti.io>"]
-rust-version="1.69"
+rust-version="1.70"
 description="A library to extract information from documents, and feed it into vector database to create robust knowledge-base assistant."
 readme="../README.md"
 repository="https://github.com/Maruti-io/cephalon-rs"
@@ -34,7 +34,7 @@ tch = {version="0.13.0",features=["download-libtorch"], optional=true}
 zip = "0.6.6"
 
 [features]
-default=["rust-bert","tch"]
+default=["rust-bert", "tch"]
 doc-only = ["tch/doc-only"]
 no-ml=[]
 

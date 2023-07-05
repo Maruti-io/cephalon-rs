@@ -27,7 +27,11 @@ use std::fs::{
 
 use std::collections::VecDeque;
 
+type DocResult<T> = std::result::Result<T, UnsupportedDocumentError>;
 
+/// SQL Error
+#[derive(Debug, Clone)]
+pub struct UnsupportedDocumentError;
 
 ///Enum containing supported documents.
 pub enum DocType{
@@ -41,11 +45,11 @@ pub enum DocType{
 ///Document Struct meant to hold information about a document. 
 #[derive(Debug,Clone)]
 pub struct Document{
-    name:String,
-    metadata:Metadata,
-    path:PathBuf,
-    data:Option<Vec<String>>,
-    encodings:Option<Vec<Vec<f32>>>
+    pub name:String,
+    pub metadata:Metadata,
+    pub path:PathBuf,
+    pub data:Option<Vec<String>>,
+    pub encodings:Option<Vec<Vec<f32>>>
 }
 
 impl Document{
@@ -87,6 +91,46 @@ impl Document{
 
     pub fn get_document_data(&self)->&Option<Vec<String>>{
         &self.data
+    }
+
+    pub fn get_document_data_as_string(&self)->DocResult<String>{
+        let doctype:DocType = self.get_doc_type();
+        match doctype{
+            DocType::Docx=>{
+                match get_text_from_docx(self.path.to_string_lossy().to_string()){
+                    Some(doc_text_result)=>{
+                        Ok(doc_text_result)
+
+                    },
+                    None=>{
+                        return Err(UnsupportedDocumentError)
+                    }
+                }
+            },
+            DocType::Pdf=>{
+                match get_text_from_pdf(self.path.to_string_lossy().to_string()){
+                    Some(doc_text_result)=>{
+                        Ok(doc_text_result)
+                    },
+                    None=>{
+                        return Err(UnsupportedDocumentError)
+                    }
+                }
+            },
+            DocType::Txt=>{
+                match get_text_from_txt(self.path.to_string_lossy().to_string()){
+                    Some(doc_text_result)=>{
+                        Ok(doc_text_result)
+                    },
+                    None=>{
+                        return Err(UnsupportedDocumentError)
+                    }
+                }
+            },
+            DocType::Unsupported=>{
+                return Err(UnsupportedDocumentError)
+            }
+        }
     }
 
 }

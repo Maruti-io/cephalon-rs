@@ -2,7 +2,9 @@
 #[cfg(not(feature="no-ml"))]
 use cephalon::knowledge_base::{
     Cephalon,
-    Util, Matches,
+    Util, 
+    Matches,
+    DocumentEncoder
 };
 use clap::{
     Args,
@@ -10,6 +12,7 @@ use clap::{
     Subcommand,
     Command
 };
+
 
 
 use std::{path::PathBuf, time::Instant};
@@ -27,6 +30,7 @@ pub enum EntityType{
     Create(CreateKnowledgeBaseCommand),
     Build(BuildKnowledgeBaseCommand),
     Answer(QueryKnowledgeBaseCommand),
+    Summarize(SummarizeDocumentCommand),
 }
 
 #[derive(Debug,Args)]
@@ -50,8 +54,16 @@ pub struct QueryKnowledgeBaseCommand{
     pub query:String,
 }
 
+
+#[derive(Debug,Args)]
+pub struct SummarizeDocumentCommand{
+    pub file_path:String,
+}
+
 #[cfg(not(feature="no-ml"))]
 fn main(){
+    use cephalon::documents::document::Document;
+
     match CommandArgs::parse().entity_type{
         EntityType::Init(_)=>{
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
@@ -83,6 +95,28 @@ fn main(){
             }
             
             println!("Time to generate results: {:?}",now.elapsed().as_secs());
+        }, 
+        EntityType::Summarize(summarize_command)=>{
+            let document:Document;
+            match Document::load(summarize_command.file_path){
+                Ok(doc)=>{
+                    document=doc;
+                },
+                Err(err)=>{
+                    panic!("Error loading document");
+                }
+            }
+            match document.summarize(){
+                Ok(summary)=>{
+                    for sentence in summary.iter(){
+                        println!("{}",sentence);
+                    }
+                    
+                },
+                Err(_err)=>{
+                    println!("Error generating summary");
+                }
+            }
         }
     }
 
