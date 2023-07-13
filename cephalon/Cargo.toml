@@ -11,6 +11,7 @@ license="MIT"
 keywords=["vector-database","knowledge-base","assistant","NLP"]
 categories=["command-line-utilities"]
 documentation="https://docs.rs/cephalon/latest/cephalon/"
+exclude=["tests"]
 
 [[main]]
 name="cephalon"
