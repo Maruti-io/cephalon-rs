@@ -15,3 +15,7 @@ Cargo.lock
 
 #.cephalon folder from cephalon
 **/.cephalon
+
+#Rust Models
+*.ot
+cephalon/tests/test_resources/model/*
