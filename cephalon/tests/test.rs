@@ -73,7 +73,8 @@ mod tests {
     fn encode_text_test_with_local_model(){
         let sentence = vec!["Ok now I am writing a test sentence for my encoding procedure. This sentence will be encoded. I am also doing one more thing where I want to get up 256 characters because why not. Ok now I just need 100 more characters, how many of them did I get??🙂".to_string()];
         let start_time = Instant::now();
-        let result = encode_text_with_model_from_path("tests//test_resources//model".to_string(),&sentence);
+        let model_path = String::from("tests//test_resources//model");
+        let result = encode_text_with_model_from_path(&model_path,&sentence);
         println!("Time to generate embeddings: {:?}",start_time.elapsed());
     }
 
