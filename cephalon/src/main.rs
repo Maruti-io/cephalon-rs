@@ -36,6 +36,8 @@ pub enum EntityType{
 #[derive(Debug,Args)]
 pub struct CreateKnowledgeBaseCommand{
     pub project_name:String,
+    #[arg(short='m',long="model")]
+    model_path:Option<String>
 }
 
 #[derive(Debug,Args)]
@@ -88,7 +90,15 @@ fn main(){
                     panic!("Error creating directory: {:?}",err)
                 }
             }
-            let _cephalon_knowledge_base = Cephalon::new(current_dir_path, false, "".to_string());
+            match project_command.model_path{
+                Some(path)=>{
+                    let _cephalon_knowledge_base = Cephalon::new(current_dir_path, true, path);
+                },
+                None=>{
+                    let _cephalon_knowledge_base = Cephalon::new(current_dir_path, false, "".to_string());
+                }
+            }
+            
         },
         EntityType::Build(_)=>{
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
