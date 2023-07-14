@@ -32,6 +32,7 @@ rusqlite = {version="0.29.0",features=["bundled"]}
 rust-bert = {version="0.21.0",optional=true}
 serde = "1.0.164"
 tch = {version="0.13.0",features=["download-libtorch"], optional=true}
+toml = "0.7.6"
 zip = "0.6.6"
 
 [features]

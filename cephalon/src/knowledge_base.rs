@@ -1,3 +1,4 @@
+use crate::models::model::encode_text_with_model_from_path;
 #[cfg(not(feature="no-ml"))]
 use crate::models::{
     model::encode_text,
@@ -14,6 +15,9 @@ use hora::core::ann_index::{
     SerializableIndex
 };
 use hora::core::metrics::Metric;
+
+use toml::{map::Map, Value};
+use serde::{Serialize,Deserialize};
 
 use crate::documents::document::{
     Document,
@@ -42,6 +46,7 @@ use std::fs::create_dir;
 use std::path::PathBuf;
 use std::io::ErrorKind;
 use std::fmt;
+use std::process::exit;
 
 
 
@@ -67,16 +72,17 @@ pub struct Matches{
 }
 
 #[cfg(not(feature="no-ml"))]
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct Cephalon{
     path:PathBuf,
-    documents:Option<Vec<Document>>
+    local_model:bool,
+    local_model_path:Option<String>
 }
 
 #[cfg(not(feature="no-ml"))]
 impl Cephalon{
     
-    fn get_text_from_all_docs(self, doc_list:&mut Vec<Document>){
+    fn get_text_from_all_docs(&self, doc_list:&mut Vec<Document>){
         doc_list.par_iter_mut().for_each(|doc: &mut Document|{
             println!("Now Processing {:?} ...",doc.get_document_name_as_string());
             let document_data_option: Option<Vec<String>> = get_file_text(doc,256);
@@ -111,8 +117,13 @@ impl Cephalon{
         //Extract text from all the documents in the doc_list
         self.get_text_from_all_docs(&mut doc_list);
 
-        //Generate encodings for all the text of a document in the list doc_list
-        Document::build_semantic_search(&mut doc_list, (*project_path).to_path_buf());
+        //Generate encodings for all the text of a document in the list doc_list\
+        if self.local_model{
+            let _ = Document::build_semantic_search(&mut doc_list, (*project_path).to_path_buf(), true, self.local_model_path.unwrap());
+        }else{
+            let _ = Document::build_semantic_search(&mut doc_list, (*project_path).to_path_buf(), false, "".to_string());
+        }
+        
 
     }
 
@@ -121,23 +132,44 @@ impl Cephalon{
         let mut results:Vec<usize> = vec![];
         let mut project_path = path.clone();
         project_path.push(".cephalon");
-        match encode_text(&vec![query]){ //Generate Embeddings for the query
-            Some(encodings)=>{
-                for encoding in encodings{
-                    let index: HNSWIndex<f32, usize> = load_index(project_path.clone());
-                    match encoding.1{//Embeddings are stored in location 1 as Option<Vec<f32>>
-                        Some(mut embedding)=>{
-                            results.append(&mut index.search(&mut embedding, count));
-                        },
-                        None=>{}
-                    }
-                    
-                }  
-            },
-            None=>{
-                return None
+        if self.local_model{
+            match encode_text_with_model_from_path(&self.local_model_path.unwrap(), &vec![query]){ //Generate Embeddings for the query
+                Some(encodings)=>{
+                    for encoding in encodings{
+                        let index: HNSWIndex<f32, usize> = load_index(project_path.clone());
+                        match encoding.1{//Embeddings are stored in location 1 as Option<Vec<f32>>
+                            Some(mut embedding)=>{
+                                results.append(&mut index.search(&mut embedding, count));
+                            },
+                            None=>{}
+                        }
+                        
+                    }  
+                },
+                None=>{
+                    return None
+                }
+            }
+        }else{
+            match encode_text(&vec![query]){ //Generate Embeddings for the query
+                Some(encodings)=>{
+                    for encoding in encodings{
+                        let index: HNSWIndex<f32, usize> = load_index(project_path.clone());
+                        match encoding.1{//Embeddings are stored in location 1 as Option<Vec<f32>>
+                            Some(mut embedding)=>{
+                                results.append(&mut index.search(&mut embedding, count));
+                            },
+                            None=>{}
+                        }
+                        
+                    }  
+                },
+                None=>{
+                    return None
+                }
             }
         }
+        
 
         let mut search_results:Vec<Matches> = vec![];
         match sql_search_by_id(project_path,results){
@@ -159,14 +191,18 @@ impl Cephalon{
 
 #[cfg(not(feature="no-ml"))]
 pub trait Util{
-    fn new(path:PathBuf)->Self;
+    fn new(path:PathBuf, local:bool, model_path:String)->Self;
     fn load(path:PathBuf)->Self;
 }
 
 #[cfg(not(feature="no-ml"))]
 impl Util for Cephalon{
-    /// Create a new Cephalon struct
-    fn new(path:PathBuf)->Cephalon{
+
+    /// Create a new Cephalon Project. path points to where the new project will be created. 
+    /// local is a bool value indicating whether to use a remote model, or a local model
+    /// If local is true then model_path will contain the path to the directory where all the model files are located. 
+    /// If local is false then the model_path will be an empty string. 
+    fn new(path:PathBuf, local:bool, model_path:String)->Cephalon{
         let mut project_path: PathBuf = path.clone();
         project_path.push(".cephalon");
         match create_dir(&project_path){
@@ -190,19 +226,53 @@ impl Util for Cephalon{
             Err(err)=>panic!("Error close database connection: {:?}",err)
         }
 
-        Cephalon{path:path.to_path_buf(), documents:None}
+        let cephy: Cephalon;
+
+        if local {
+            cephy = Cephalon{path:path.to_path_buf(),local_model:local, local_model_path:Some(model_path)};
+        }else{
+            cephy = Cephalon{path:path.to_path_buf(),local_model:local, local_model_path:None};
+        }
+        
+
+        let cephy_toml = toml::to_string(&cephy).expect("Could not encode TOML value");
+
+        project_path.push("cephalon.toml");
+        
+        std::fs::write(project_path, cephy_toml).expect("Error writing to .toml file");
+
+        cephy
+
     }
 
-    /// Load an existing Cephalon project and return it as a struct. 
+    /// Load an existing Cephalon project by reading the cephalon.toml file and returning the resulting 
+    /// Cephalon object. 
     fn load(path:PathBuf)->Cephalon{
-        Cephalon{path:path.to_path_buf(), documents:None}
+        let mut project_path: PathBuf = path.clone();
+        project_path.push(".cephalon");
+        project_path.push("cephalon.toml");
+        let data = match std::fs::read_to_string(project_path){
+            Ok(d)=>d,
+            Err(err)=>{
+                println!("Error reading cephalon.toml file: {:?}",err);
+                exit(1);
+            }
+        };
+        let cephy:Cephalon = match toml::from_str(&data){
+            Ok(c)=>c,
+            Err(err)=>{
+                println!("Error Generating Cephalon object from cephalon.toml file: {:?}",err);
+                exit(1)
+            }
+        };
+        cephy
     }
 }
 
 #[cfg(not(feature="no-ml"))]
 pub trait DocumentEncoder{
-    fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf)->Result<()>;
-    fn encode_text_via_model(&self, model:&str)->Option<Vec<(String,Option<Vec<f32>>)>>;
+    fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf, local:bool, model_path:String)->Result<()>;
+    fn encode_text_via_model(&self, model:&str, local:bool, model_path:&String)->Option<Vec<(String,Option<Vec<f32>>)>>;
     fn load(file_path:String)->Result<Document>;
     fn summarize(&self)->Result<Vec<String>>;
 }
@@ -211,14 +281,15 @@ pub trait DocumentEncoder{
 impl DocumentEncoder for Document{
 
     /// Building Semantic Search for a vector of documents. 
-    fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf)->Result<()>{
+    fn build_semantic_search(doc_list:&mut Vec<Document>, project_path:PathBuf, local:bool, model_path:String)->Result<()>{
         // We iterate through documents, generate the embeddings, and add the embeddings to index. 
         //Get the index
         let mut index:HNSWIndex<f32,usize> = create_index(project_path.clone(), 384);
         let mut id:usize = 0;
 
+
         for doc in doc_list{
-            match doc.encode_text_via_model("all-MiniLM-L6-v2"){
+            match doc.encode_text_via_model("all-MiniLM-L6-v2", local, &model_path){
                 Some(vector_embeddings)=>{
                     let sentences:&Vec<String>; 
                     match doc.get_document_data(){
@@ -249,10 +320,6 @@ impl DocumentEncoder for Document{
 
                                     }
                                 }
-                                
-        
-                                
-                                
                             }
                         },
                         None=>{
@@ -278,7 +345,7 @@ impl DocumentEncoder for Document{
     /// Encode text of the current document via a sentence embedding model.
     /// If the model was unable to encode the text into vector embeddings then 
     /// none is returned. 
-    fn encode_text_via_model(&self, _model:&str)->Option<Vec<(String,Option<Vec<f32>>)>>{
+    fn encode_text_via_model(&self, _model:&str, local:bool, model_path:&String)->Option<Vec<(String,Option<Vec<f32>>)>>{
         let mut encodings:Vec<Vec<f32>> = vec![];
         let sentences:Vec<String>;
         match self.get_document_data(){
@@ -290,7 +357,8 @@ impl DocumentEncoder for Document{
                 return None
             }
         }
-        match encode_text(&sentences){
+        if local{
+            match encode_text_with_model_from_path(model_path,&sentences){
                 Some(embedded_sentences)=>{
                     return Some(embedded_sentences)
                 },
@@ -299,6 +367,18 @@ impl DocumentEncoder for Document{
                     return None
                 }
         }
+        }else{
+            match encode_text(&sentences){
+                Some(embedded_sentences)=>{
+                    return Some(embedded_sentences)
+                },
+                None=>{
+                    println!("Unable to generate Embeddings for document:{:?}",self.get_document_name_as_string());
+                    return None
+                }
+        }
+        }
+        
     }
 
     fn load(file_path:String)->Result<Document>{

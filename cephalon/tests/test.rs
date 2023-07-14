@@ -84,7 +84,7 @@ mod tests {
         project_path.push("tests");
         project_path.push("test_resources");
         println!("Path: {:?}",project_path.display());
-        let cephalon = Cephalon::new(project_path);
+        let cephalon = Cephalon::new(project_path, false, "".to_string());
     }
 
     #[test]

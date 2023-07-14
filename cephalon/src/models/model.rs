@@ -26,7 +26,6 @@ pub fn encode_text(text:&Vec<String>)->Option<Vec<(String,Option<Vec<f32>>)>>{
             }    
         
         //Iterate over each sentence in the chunk and create embeddings for it.
-        let now = std::time::Instant::now();
         for sentence in sentences{
             match model.encode(&[sentence]){
                 Ok(encodings)=>{
@@ -40,8 +39,6 @@ pub fn encode_text(text:&Vec<String>)->Option<Vec<(String,Option<Vec<f32>>)>>{
                 }
             }
         }  
-
-        println!("Processed all text in: {:?}", now.elapsed().as_secs());
     });
 
     let mut output_vec:Vec<(String,Option<Vec<f32>>)> = vec![];
@@ -56,7 +53,7 @@ pub fn encode_text(text:&Vec<String>)->Option<Vec<(String,Option<Vec<f32>>)>>{
 /// This function uses a model stored locally, and therefore also requires a path to the model location. 
 ///Use Case: Use this to create embeddings for sentences.   
 #[cfg(not(feature="no-ml"))]
-pub fn encode_text_with_model_from_path(model_path:String, text:&Vec<String>)->Option<Vec<(String,Option<Vec<f32>>)>>{
+pub fn encode_text_with_model_from_path(model_path:&String, text:&Vec<String>)->Option<Vec<(String,Option<Vec<f32>>)>>{
     use rayon::prelude::*;
     use rust_bert::pipelines::sentence_embeddings::{
         SentenceEmbeddingsBuilder,
@@ -80,7 +77,6 @@ pub fn encode_text_with_model_from_path(model_path:String, text:&Vec<String>)->O
         }    
         
         //Iterate over each sentence in the chunk and create embeddings for it.
-        let now = std::time::Instant::now();
         for sentence in sentences{
             match model.encode(&[sentence]){
                 Ok(encodings)=>{
@@ -93,9 +89,7 @@ pub fn encode_text_with_model_from_path(model_path:String, text:&Vec<String>)->O
                     panic!("Error creating embeddings for text: {:?}",err)
                 }
             }
-        }  
-
-        println!("Processed all text in: {:?}", now.elapsed().as_secs());
+        } 
     });
 
     let mut output_vec:Vec<(String,Option<Vec<f32>>)> = vec![];

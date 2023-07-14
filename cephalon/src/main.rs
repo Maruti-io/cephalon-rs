@@ -45,7 +45,8 @@ pub struct BuildKnowledgeBaseCommand{
 
 #[derive(Debug,Args)]
 pub struct InitKnowledgeBaseCommand{
-    
+    #[arg(short='m',long="model")]
+    model_path:Option<String>
 }
 
 
@@ -65,9 +66,18 @@ fn main(){
     use cephalon::documents::document::Document;
 
     match CommandArgs::parse().entity_type{
-        EntityType::Init(_)=>{
-            let current_dir_path:PathBuf = std::env::current_dir().unwrap();
-            let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
+        EntityType::Init(init_command)=>{
+            match init_command.model_path{
+                Some(model_path)=>{
+                    let current_dir_path:PathBuf = std::env::current_dir().unwrap();
+                    let _cephalon_knowledge_base: Cephalon = Cephalon::new(current_dir_path,true,model_path);
+                },
+                None=>{
+                    let current_dir_path:PathBuf = std::env::current_dir().unwrap();
+                    let _cephalon_knowledge_base: Cephalon = Cephalon::new(current_dir_path,false,"".to_string());
+                }
+            }
+            
         },
         EntityType::Create(project_command)=>{
             let mut current_dir_path:PathBuf = std::env::current_dir().unwrap();
@@ -78,7 +88,7 @@ fn main(){
                     panic!("Error creating directory: {:?}",err)
                 }
             }
-            let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
+            let _cephalon_knowledge_base = Cephalon::new(current_dir_path, false, "".to_string());
         },
         EntityType::Build(_)=>{
             let current_dir_path:PathBuf = std::env::current_dir().unwrap();
