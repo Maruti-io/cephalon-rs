@@ -52,6 +52,12 @@ You can query the knowledge base by entering a query like this.
 ```
 cephalon answer 'your-query-or-text'
 ```
+
+Create summaries of documents using the summarize command
+```
+cephalon summarize 'path\to\your\file'
+```
+
 ------
 # Using Cephalon in your code-base
 
@@ -64,7 +70,7 @@ use cephalon::knowledge_base::{
 
 fn main(){
     let current_dir_path:PathBuf = std::env::current_dir().unwrap();
-    let _cephalon_knowledge_base = Cephalon::new(current_dir_path);
+    let _cephalon_knowledge_base = Cephalon::new(current_dir_path, false, "".to_string());
 }
 ```
 This will create  a .cephalon directory in the project directory. All, the data related to cephalon will be kept in there. 
