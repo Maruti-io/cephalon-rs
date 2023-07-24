@@ -1,11 +1,12 @@
-# Cephalon Knowledge Base Assistant
-Cephalon is a library to create NLP powered knowledge base assistant with privacy in mind.
+# Cephalon- A Framework to build Machine Learning Applications
+Cephalon is a framework to add machine learning capabilities such as semantic search systems, knowledge base assistants, and more. 
 Cephalon can provide:
-* Single Source of all documentation. ✅
-* Semantic Search ✅
+* Out of the box Semantic Search ✅
+* Out of the box Knowledge Base Assistant ❔
 * Multi-Modality [Schduled to start in late Fall 2023] ❔
     * Support for Images [Scheduled to start in late Fall 2023] ❔
 * Support for masking private data ❔
+* Single Source of all of your machine learning application needs at version 1.0. ❔
 
 ------
 # Join us on our Adventure
@@ -15,6 +16,8 @@ Star us on [GitHub](https://github.com/Maruti-io/cephalon-rs)
 Join us on [Discord](https://discord.gg/zYQdB3x9)
 
 We would love to get some feedback from users on the project. We are working on developing a roadmap of the project as well. As such I would love to get some feed back from everyone, as to what features they would like to see in the project in the future. If there are features or issues you are facing please, let us know in the discord. We will do our best to respond to your questions as soon as possible! 
+
+If you have some time please provide us with your feedback here: [Cephalon Roadmap Survey](https://forms.office.com/r/keAs3nK7kt)
 
 ------
 # Installing Cephalon
@@ -34,20 +37,20 @@ Step 2: Install the cephalon cli via: ```cargo install cephalon```
 ------
 # Creating a Knowledge Base Assistant 
 
-You can create a knowledeg base with: 
+You can create a semantic search system with: 
 ```
 cephalon init
 ```
 or
 ```
-cephalon create your-knowledge-base-assistant
+cephalon create sample-sematic-search-app
 ```
 After that move all the documentation that you might have into your project directory and run 
 ```
 cephalon build
 ```
 
-You can query the knowledge base by entering a query like this. 
+You can query the index by entering a query like this. 
 
 ```
 cephalon answer 'your-query-or-text'
@@ -70,7 +73,7 @@ use cephalon::knowledge_base::{
 
 fn main(){
     let current_dir_path:PathBuf = std::env::current_dir().unwrap();
-    let _cephalon_knowledge_base = Cephalon::new(current_dir_path, false, "".to_string());
+    let cephalon = Cephalon::new(current_dir_path, false, "".to_string());
 }
 ```
 This will create  a .cephalon directory in the project directory. All, the data related to cephalon will be kept in there. 
@@ -85,7 +88,7 @@ use cephalon::knowledge_base::{
 fn main(){
     let current_dir_path:PathBuf = std::env::current_dir().unwrap();
     //Load and existing cephalon project
-    let cephalon_knowledge_base = Cephalon::load(current_dir_path.clone());
+    let cephalon_semantic_search = Cephalon::load(current_dir_path.clone());
     //Point to the directory where the files are located. 
     cephalon_knowledge_base.search_and_build_index(&current_dir_path);
 }
@@ -102,10 +105,10 @@ use cephalon::knowledge_base::{
 fn main(){
     let current_dir_path:PathBuf = std::env::current_dir().unwrap();
     //Load a cephalon that is already built.
-    let cephalon_knowledge_base = Cephalon::load(current_dir_path.clone());
+    let cephalon_semantic_search = Cephalon::load(current_dir_path.clone());
 
     //Search the Index and database for results
-    let matches: Vec<Matches> = cephalon_knowledge_base.search(current_dir_path, query.query,5).unwrap();
+    let matches: Vec<Matches> = cephalon_semantic_search.search(current_dir_path, query.query,5).unwrap();
 
     //Iterate through matches and print them
     for search_result in matches{
@@ -124,6 +127,6 @@ Cephalon-rs is the base version of Cephalon purely written in Rust. It also uses
 * PDF (.pdf) ✅
 * Word Documents (.docx) ✅
 * Text (.txt) ✅
-* JSON [Scheduled for Summer 2023] ❔
+* JSON [Scheduled for late Fall 2023] ❔
 
 

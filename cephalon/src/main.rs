@@ -1,4 +1,3 @@
-
 #[cfg(not(feature="no-ml"))]
 use cephalon::knowledge_base::{
     Cephalon,

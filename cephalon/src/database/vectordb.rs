@@ -63,4 +63,9 @@ pub fn save_index(index:&mut HNSWIndex<f32,usize>,project_path:PathBuf){
     }
 }
 
+pub trait utils{
+    fn create(path:PathBuf)->Self;
+    fn load(path:PathBuf)->Self;
+    fn save(s:Self);
+}
 
